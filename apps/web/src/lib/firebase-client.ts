@@ -13,7 +13,7 @@ import {
 	PUBLIC_FIREBASE_API_KEY,
 	PUBLIC_FIREBASE_AUTH_DOMAIN,
 	PUBLIC_FIREBASE_PROJECT_ID
-} from '$env/static/public';
+} from '$app/env/public';
 
 const config: FirebaseOptions = {
 	apiKey: PUBLIC_FIREBASE_API_KEY,
