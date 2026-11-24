@@ -8,6 +8,7 @@ provider adapters when one is pinned (PRD.md §7) — nothing else changes,
 that's the point of the Embedder/Generator protocols in interfaces.py.
 """
 
+import json
 import os
 import time
 import uuid
@@ -107,6 +108,52 @@ async def list_admin_documents() -> list[dict]:
             "versionNumber": r["version_number"],
             "versionStatus": r["version_status"],
             "errorCode": r["error_code"],
+        }
+        for r in rows
+    ]
+
+
+@app.get("/admin/evaluations")
+async def list_evaluations() -> list[dict]:
+    """PRD.md §8 GET /admin/evaluations. No runner exists yet (PRD.md §13 M3),
+    so this is honestly empty until one writes real rows here — never fake one."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT id, dataset_version, metrics, status, created_at FROM evaluation_runs "
+        "ORDER BY created_at DESC"
+    )
+    return [
+        {
+            "id": str(r["id"]),
+            "datasetVersion": r["dataset_version"],
+            "metrics": json.loads(r["metrics"]) if r["metrics"] else None,
+            "status": r["status"],
+            "createdAt": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
+
+
+@app.get("/admin/coverage-gaps")
+async def coverage_gaps() -> list[dict]:
+    """PRD.md §8 GET /admin/coverage-gaps — abstained questions from answer_cache,
+    by frequency (K-17). hit_count only counts repeat hits, so timesAsked is +1
+    for the original request that created the row (PRD.md §6 cache interaction note)."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT question_text, hit_count, created_at
+        FROM answer_cache
+        WHERE (answer->>'grounded')::boolean = false
+        ORDER BY hit_count DESC, created_at DESC
+        LIMIT 50
+        """
+    )
+    return [
+        {
+            "question": r["question_text"],
+            "timesAsked": r["hit_count"] + 1,
+            "firstSeen": r["created_at"].isoformat(),
         }
         for r in rows
     ]
