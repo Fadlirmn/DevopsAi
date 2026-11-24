@@ -67,6 +67,17 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/collections")
+async def list_collections() -> list[dict]:
+    """PRD.md §8 GET /collections — published public collections only."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT slug, title, description FROM collections "
+        "WHERE visibility = 'public' AND status = 'published' ORDER BY title"
+    )
+    return [dict(r) for r in rows]
+
+
 def _build_citations(cited_chunk_ids: list[str], hits: list[ChunkHit]) -> list[Citation]:
     by_id = {h.chunk_id: h for h in hits}
     out = []
