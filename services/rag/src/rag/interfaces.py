@@ -8,6 +8,7 @@ from typing import Protocol
 class ChunkHit:
     chunk_id: str
     document_id: str
+    document_title: str
     content: str
     page_number: int | None
     score: float

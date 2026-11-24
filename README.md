@@ -10,23 +10,36 @@ Scope: RAG, pgvector, Python worker, SvelteKit, TLS.
 - `infra/.env.example` — sample environment keys (no credentials).
 - `infra/Caddyfile` — HTTPS reverse proxy template, adapt API health/routes.
 
-**Important:** most of the application logic described in the PRD is **not yet implemented**. What exists now is the repo scaffold (Stage 1 of `IMPLEMENTATION.md`): directory layout, an empty SvelteKit shell (`apps/web`), two empty Python packages (`services/rag`, `services/worker`) with the provider interfaces stubbed, and the initial DB migration. Dockerfiles, Compose, ingestion, retrieval and auth logic still need to be built per the milestones in `IMPLEMENTATION.md`.
+**Status:** the query path (cache → retrieve → generate → validate citations) is real and runs locally end to end, against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see PRD.md §15). Ingestion (PDF parsing/chunking), Firebase auth, and the admin UI are still stubs; see `IMPLEMENTATION.md` for the remaining milestones.
 
-Default production target: a VPS with Docker Compose. Vercel is optional read-only demo deployment, not a runtime requirement.
+Default production target: a VPS with Docker Compose. Vercel is optional, for the frontend + demo-mode fallback (PRD.md §6).
 
 ## Layout
 ```
-apps/web/            SvelteKit SSR + BFF (scaffolded, no business logic yet)
-services/rag/         Python: Embedder/Retriever/Generator interfaces (stubs)
-services/worker/      Python: ingestion worker entrypoint (stub)
+apps/web/            SvelteKit SSR + BFF — /demo page and /api/v1/chat proxy are real
+services/rag/         Python FastAPI: real retriever/cache/citation-validator, mock embedder+generator
+services/worker/      Python: ingestion worker entrypoint (stub — M1)
 database/migrations/  Versioned SQL (0001_init.sql = core schema)
-packages/contracts/   Shared API types — added once a real endpoint exists
-infra/                Caddyfile, .env.example, deployment runbook (compose.yaml: Stage 4)
+packages/contracts/   Shared API types — added once more endpoints exist
+infra/                compose.dev.yaml (local Postgres), Caddyfile, .env.example (compose.yaml: Stage 4)
 eval/, docs/, scripts/, .github/workflows/  placeholders for later milestones
 ```
 
-## Local dev (web shell only)
+## Local dev (real query path, mock provider)
 ```bash
-cd apps/web && pnpm install && pnpm dev
+# 1. Postgres + pgvector, migration applies automatically on first start
+docker compose -f infra/compose.dev.yaml up -d db
+
+# 2. RAG service
+cd services/rag
+python3 -m venv .venv && .venv/bin/pip install -e .
+DATABASE_URL=postgresql://knowledgeops_app:dev_only_password@localhost:15432/knowledgeops \
+  .venv/bin/python scripts/seed_dev.py            # seeds one demo collection
+DATABASE_URL=postgresql://knowledgeops_app:dev_only_password@localhost:15432/knowledgeops \
+  .venv/bin/uvicorn rag.app:app --app-dir src --port 8000
+
+# 3. Web, in another shell
+cd apps/web && pnpm install
+RAG_SERVICE_URL=http://127.0.0.1:8000 pnpm dev
 ```
-No API/DB wired up yet — this just runs the static shell.
+Open `http://localhost:5173/demo`, collection `incident-playbooks` is pre-seeded. The embedder/generator are mocks (`services/rag/src/rag/mock_*.py`) — swap them for real provider adapters once one is pinned (PRD.md §7); nothing else in the request path changes.
