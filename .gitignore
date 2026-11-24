@@ -1,0 +1,11 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.svelte-kit/
+infra/.env.production
+*.env.production
+.DS_Store
+eval/datasets/raw/

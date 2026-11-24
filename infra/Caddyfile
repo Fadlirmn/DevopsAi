@@ -1,0 +1,16 @@
+# TEMPLATE: requires Caddy with DNS pointing to VPS, ports 80/443 available.
+{$DOMAIN:knowledge.example.com} {
+    encode zstd gzip
+    header {
+      X-Content-Type-Options nosniff
+      Referrer-Policy strict-origin-when-cross-origin
+      X-Frame-Options DENY
+    }
+    @api path /api/* /health/*
+    handle @api {
+        reverse_proxy api:8000
+    }
+    handle {
+        reverse_proxy web:3000
+    }
+}
