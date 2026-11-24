@@ -254,6 +254,100 @@ a {
 	font-style: italic;
 }
 
+/* --- Badges --- */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
+	font-family: var(--font-mono);
+	padding: 3px 8px;
+	border-radius: 4px;
+	border: 1px solid var(--border);
+	color: var(--fg-muted);
+	white-space: nowrap;
+}
+.badge .dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+}
+.badge-good .dot {
+	background: var(--good);
+}
+.badge-good {
+	color: var(--good);
+	border-color: color-mix(in srgb, var(--good) 40%, var(--border));
+}
+.badge-warn .dot {
+	background: var(--warn);
+}
+.badge-warn {
+	color: var(--warn);
+	border-color: color-mix(in srgb, var(--warn) 40%, var(--border));
+}
+.badge-bad .dot {
+	background: var(--bad);
+}
+.badge-bad {
+	color: var(--bad);
+	border-color: color-mix(in srgb, var(--bad) 40%, var(--border));
+}
+.badge-neutral .dot {
+	background: var(--fg-muted);
+}
+
+/* --- Table --- */
+.table-wrap {
+	overflow-x: auto;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+}
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	min-width: 480px;
+}
+th,
+td {
+	text-align: left;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--border);
+	white-space: nowrap;
+}
+th {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--fg-muted);
+	background: var(--bg-sunken);
+}
+tbody tr:last-child td {
+	border-bottom: none;
+}
+
+/* --- Dropzone --- */
+.dropzone {
+	border: 1.5px dashed var(--border);
+	border-radius: 8px;
+	padding: 26px;
+	text-align: center;
+	color: var(--fg-muted);
+	font-size: 13px;
+	margin-bottom: 16px;
+	cursor: pointer;
+}
+.dropzone.drag {
+	border-color: var(--accent);
+	color: var(--fg);
+	background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+.dropzone strong {
+	color: var(--fg);
+}
+
 /* --- Forms --- */
 textarea,
 input {

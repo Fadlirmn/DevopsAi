@@ -78,6 +78,40 @@ async def list_collections() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+@app.get("/admin/documents")
+async def list_admin_documents() -> list[dict]:
+    """PRD.md §8 GET /admin/documents — documents and their active version.
+
+    No auth check here yet (Firebase admin verification is still a stub,
+    PRD.md §9 K-02) — do not deploy this route publicly until that lands.
+    """
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT d.id, d.title, d.status AS doc_status,
+               col.title AS collection_title, col.visibility,
+               v.version_number, v.status AS version_status, v.error_code
+        FROM documents d
+        JOIN collections col ON col.id = d.collection_id
+        LEFT JOIN document_versions v ON v.id = d.active_version_id
+        ORDER BY d.created_at DESC
+        """
+    )
+    return [
+        {
+            "id": str(r["id"]),
+            "title": r["title"],
+            "docStatus": r["doc_status"],
+            "collectionTitle": r["collection_title"],
+            "visibility": r["visibility"],
+            "versionNumber": r["version_number"],
+            "versionStatus": r["version_status"],
+            "errorCode": r["error_code"],
+        }
+        for r in rows
+    ]
+
+
 def _build_citations(cited_chunk_ids: list[str], hits: list[ChunkHit]) -> list[Citation]:
     by_id = {h.chunk_id: h for h in hits}
     out = []
