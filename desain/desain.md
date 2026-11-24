@@ -31,7 +31,7 @@ Scope project ini **publik/global**, bukan internal perusahaan (lihat PRD §2-3 
 Tiap baris: apa yang perlu didesain, status.
 
 - [ ] `/` — landing: ringkasan showcase, diagram arsitektur, metrik benchmark, link ke demo
-- [ ] `/demo` — collection selector, chat pane, sources drawer, safety notice, retry/clear session
+- [ ] `/demo` — collection selector, sample questions, chat pane, sources drawer, safety notice, retry/clear session
 - [ ] `/sources/[id]` — metadata dokumen, preview, anchor halaman/section, highlight chunk yang disitasi
 - [ ] `/login` — Firebase Google sign-in (admin only, no signup)
 - [ ] `/admin/documents` — upload, daftar versi, timeline ingestion, toggle visibility/publish
@@ -52,6 +52,8 @@ Tiap baris: apa yang perlu didesain, status.
 - Dark mode default, light mode opsional, proporsi warna 60/30/10
 - Kontras warna ≥ WCAG AA
 - Keyboard nav + focus state jelas di semua interactive element
+- Semua form input punya `<label>` yang keliatan/accessible
 - `aria-live` buat update jawaban chat yang streaming
 - `prefers-reduced-motion` dihormati
 - Jangan render raw HTML dari model (XSS)
+- Konten yang dibatasi/private harus keliatan jelas sebagai "restricted" (bukan cuma disembunyikan diam-diam) — visitor publik gak boleh bingung kenapa sesuatu gak muncul

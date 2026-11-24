@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KnowledgeOps AI — Admin</title>
+<style>
+:root{color-scheme:dark;
+--bg:#171717;--side:#0d0d0d;--surf:#212121;--surf2:#2f2f2f;--hover:#262626;--line:#2c2c2c;--line2:#3a3a3a;
+--text:#ececec;--mute:#9b9b9b;--acc:#3e63dd;--acc-txt:#9eb1ff;--on-acc:#fff;--ok:#3dd68c;--wn:#ffc53d;--er:#ff9592;
+--font:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+:root[data-theme="light"]{color-scheme:light;
+--bg:#fff;--side:#f9f9f9;--surf:#f9f9f9;--surf2:#ececec;--hover:#ececec;--line:#e5e5e5;--line2:#d4d4d4;
+--text:#0d0d0d;--mute:#6b6b6b;--acc-txt:#3a5bc7;--ok:#18794e;--wn:#ab6400;--er:#cd2b31}
+*{box-sizing:border-box}
+html,body{height:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 var(--font);display:flex}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc-txt);outline-offset:2px;border-radius:8px}
+svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.side{width:248px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 10px;gap:4px;flex-shrink:0}
+.brand{font-weight:700;padding:4px 10px 12px}.brand span{color:var(--acc-txt)}
+.brand small{display:block;font-weight:400;color:var(--mute);font-size:12px}
+.side a{display:flex;gap:12px;align-items:center;padding:9px 10px;border-radius:10px;color:var(--mute);text-decoration:none}
+.side a:hover{background:var(--hover);color:var(--text)}
+.side a[aria-current="page"]{background:var(--hover);color:var(--text)}
+.side .sp{flex:1}
+.who{display:flex;gap:12px;align-items:center;padding:8px 10px;color:var(--mute);font-size:14px}
+.av{width:28px;height:28px;border-radius:50%;background:#10a37f;color:#fff;font-size:11px;display:grid;place-items:center;font-weight:600}
+main{flex:1;min-width:0;overflow:auto}
+.pg{max-width:960px;margin:0 auto;padding:28px 24px 48px}
+.pg[hidden]{display:none}
+h1{margin:0 0 4px;font-size:22px;letter-spacing:-.01em}
+.sub{margin:0 0 20px;color:var(--mute);font-size:14px}
+h2{font-size:15px;margin:26px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:8px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card small{color:var(--mute)}.card strong{display:block;font-size:24px;letter-spacing:-.02em}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th{text-align:left;padding:10px 14px;color:var(--mute);font-weight:600;font-size:12px;border-bottom:1px solid var(--line2)}
+td{padding:10px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;border:1px solid currentColor}
+.ok{color:var(--ok)}.wn{color:var(--wn)}.er{color:var(--er)}
+.drop{display:grid;place-items:center;gap:4px;text-align:center;border:1.5px dashed var(--line2);border-radius:14px;padding:26px;color:var(--mute);cursor:pointer;width:100%}
+.drop:hover{border-color:var(--acc);color:var(--text)}
+.sw{position:relative;width:40px;height:22px;border-radius:99px;background:var(--surf2);border:1px solid var(--line2);flex-shrink:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text);transition:transform .15s}
+.sw[aria-checked="true"]{background:var(--acc);border-color:var(--acc)}
+.sw[aria-checked="true"]::after{transform:translateX(18px);background:#fff}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row label{display:block}.row small{display:block;color:var(--mute);font-size:13px}
+.form{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:4px 16px}
+input[type=number],select{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:7px 10px;width:150px}
+input[aria-invalid="true"]{border-color:var(--er)}
+.msg{font-size:13px;color:var(--er);min-height:18px;text-align:right}
+.btn{background:var(--acc);color:var(--on-acc);border-radius:99px;padding:8px 20px;margin-top:14px}
+.btn:hover{filter:brightness(1.1)}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:flex;gap:12px;padding:6px 0;font-size:14px}
+.tl li::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);margin-top:8px;flex-shrink:0}
+.tl li.run::before{background:var(--wn)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--surf2);border:1px solid var(--line2);padding:8px 16px;border-radius:99px;font-size:14px}
+.toast[hidden]{display:none}
+.acts{display:flex;gap:8px;align-items:center}
+.b2{border:1px solid var(--line2);border-radius:99px;padding:4px 14px;font-size:13px}.b2:hover{background:var(--hover)}
+.b2.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--surf2);padding:2px 6px;border-radius:6px}
+.newkey{margin-top:12px;border:1px solid var(--ok);border-radius:12px;padding:10px 14px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.newkey[hidden]{display:none}
+.ti{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:7px 10px;width:100%;max-width:360px}
+.chg{justify-content:flex-start}
+@media(max-width:760px){body{flex-direction:column}.side{width:auto;flex-direction:row;overflow-x:auto;padding:8px;border-right:0;border-bottom:1px solid var(--line)}.brand,.who,.side .sp{display:none}.side a{white-space:nowrap}}
+</style>
+</head>
+<body>
+<nav class="side" aria-label="Admin">
+  <div class="brand">Knowledge<span>Ops</span> AI<small>Panel admin</small></div>
+  <a href="#dokumen" data-p="dokumen"><svg viewBox="0 0 24 24"><path d="M8 3h8l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v5h5"/></svg>Dokumen</a>
+  <a href="#evaluasi" data-p="evaluasi"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Evaluasi</a>
+  <a href="#apikey" data-p="apikey"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></svg>API &amp; Kunci</a>
+  <a href="#pengaturan" data-p="pengaturan"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Pengaturan</a>
+  <span class="sp"></span>
+  <a href="https://claude.ai/artifact/BjTQi2E8dwHyYZCEeYWCav"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Kembali ke chat</a>
+  <div class="who"><span class="av">AD</span>admin@knowledgeops.ai</div>
+</nav>
+<main>
+<section class="pg" id="p-dokumen">
+  <h1>Dokumen</h1><p class="sub">Upload, versi, status ingestion, dan visibilitas.</p>
+  <button class="drop" id="drop"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg><b style="color:var(--text)">Seret file ke sini atau klik</b><span>PDF, MD, TXT · maks 20 MB</span></button>
+  <h2>Daftar dokumen</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Nama</th><th>Versi</th><th>Ingestion</th><th>Publik</th><th>Diperbarui</th></tr></thead>
+    <tbody>
+      <tr><td>api-guide.pdf</td><td class="n">v3</td><td><span class="badge ok">succeeded</span></td><td><button class="sw" role="switch" aria-checked="true" aria-label="Publik api-guide.pdf"></button></td><td>Hari ini</td></tr>
+      <tr><td>admin-manual.md</td><td class="n">v1</td><td><span class="badge wn">running</span></td><td><button class="sw" role="switch" aria-checked="false" aria-label="Publik admin-manual.md"></button></td><td>Hari ini</td></tr>
+      <tr><td>pricing.pdf</td><td class="n">v2</td><td><span class="badge er">failed</span></td><td><button class="sw" role="switch" aria-checked="false" aria-label="Publik pricing.pdf"></button></td><td>Kemarin</td></tr>
+    </tbody></table></div>
+  <h2>Timeline ingestion · admin-manual.md</h2>
+  <ul class="tl"><li>Upload selesai</li><li>Teks diekstrak</li><li class="run">Membuat embedding (62%)</li></ul>
+</section>
+
+<section class="pg" id="p-evaluasi" hidden>
+  <h1>Evaluasi</h1><p class="sub">Kualitas retrieval dan jawaban per run.</p>
+  <div class="grid">
+    <div class="card"><small>Recall@5</small><strong>0.91</strong></div>
+    <div class="card"><small>MRR</small><strong>0.78</strong></div>
+    <div class="card"><small>Grounding</small><strong>96%</strong></div>
+    <div class="card"><small>Latency p50</small><strong>1.8 s</strong></div>
+    <div class="card"><small>Biaya / 100 q</small><strong>$0.42</strong></div>
+  </div>
+  <h2>Run</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Run</th><th>Config</th><th>Status</th><th>Recall@5</th><th>MRR</th><th>Latency</th></tr></thead>
+    <tbody>
+      <tr><td>#43</td><td>k=8, model baru</td><td><span class="badge wn">running</span></td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>#42</td><td>k=8, rerank on</td><td><span class="badge ok">succeeded</span></td><td class="n">0.91</td><td class="n">0.78</td><td class="n">1.8 s</td></tr>
+      <tr><td>#41</td><td>k=5, rerank off</td><td><span class="badge ok">succeeded</span></td><td class="n">0.84</td><td class="n">0.71</td><td class="n">1.2 s</td></tr>
+    </tbody></table></div>
+  <h2>Coverage gap (di-abstain, urut frekuensi)</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Query</th><th>Jumlah</th></tr></thead>
+    <tbody><tr><td>cara reset kunci API</td><td class="n">23</td></tr><tr><td>harga paket enterprise</td><td class="n">17</td></tr><tr><td>webhook retry policy</td><td class="n">9</td></tr></tbody></table></div>
+</section>
+
+<section class="pg" id="p-apikey" hidden>
+  <h1>API &amp; Kunci</h1><p class="sub">Kunci provider disimpan di server. Browser hanya lihat 4 karakter terakhir.</p>
+  <h2>Provider</h2>
+  <div class="form" id="prov">
+    <div class="row" data-n="Model API"><div><label>Model API</label><small>••••••••a91f</small></div><div class="acts"><span class="badge ok">ok</span><button class="b2" data-act="test">Tes</button><button class="b2" data-act="chg">Ganti</button></div></div>
+    <div class="row" data-n="Embedding"><div><label>Embedding</label><small>••••••••77c2</small></div><div class="acts"><span class="badge ok">ok</span><button class="b2" data-act="test">Tes</button><button class="b2" data-act="chg">Ganti</button></div></div>
+    <div class="row" data-n="Database vektor"><div><label>URL database vektor</label><small>••••••••5432</small></div><div class="acts"><span class="badge ok">ok</span><button class="b2" data-act="test">Tes</button><button class="b2" data-act="chg">Ganti</button></div></div>
+    <div class="row" data-n="Firebase"><div><label>Firebase service account</label><small>••••••••json1</small></div><div class="acts"><span class="badge wn">lambat</span><button class="b2" data-act="test">Tes</button><button class="b2" data-act="chg">Ganti</button></div></div>
+  </div>
+  <h2>Kunci API publik</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Nama</th><th>Kunci</th><th>Dibuat</th><th>Terakhir dipakai</th><th></th></tr></thead>
+    <tbody id="keys">
+      <tr><td>Website utama</td><td><code>kops_live_…4f2a</code></td><td>12 Nov</td><td>Hari ini</td><td><button class="b2" data-rv>Revoke</button></td></tr>
+      <tr><td>Widget docs</td><td><code>kops_live_…b81c</code></td><td>2 Nov</td><td>3 hari lalu</td><td><button class="b2" data-rv>Revoke</button></td></tr>
+    </tbody></table></div>
+  <button class="btn" id="mk">Buat kunci</button>
+  <div class="newkey" id="nk" role="status" hidden><span>Salin sekarang. Kunci ini tidak tampil lagi.</span><code id="nkv"></code><button class="b2" id="cp">Salin</button></div>
+  <h2>Origin yang diizinkan (CORS)</h2>
+  <div class="form"><div class="row"><div><label for="org">Domain</label><small>Pisahkan dengan koma.</small></div><input class="ti" type="text" id="org" value="https://knowledgeops.example"></div></div>
+  <button class="btn" id="so">Simpan</button>
+</section>
+
+<section class="pg" id="p-pengaturan" hidden>
+  <h1>Pengaturan</h1><p class="sub">Kuota, model, retrieval, tampilan.</p>
+  <div class="form" id="form" novalidate>
+    <div class="row"><div><label for="quota">Kuota (request / menit)</label><small>1 sampai 10.000</small></div><input type="number" id="quota" value="60" min="1" max="10000"></div>
+    <div class="row"><div><label for="model">Versi model</label></div><select id="model"><option>sonnet-5-5</option><option>haiku-5-5</option></select></div>
+    <div class="row"><div><label for="topk">Top-K retrieval</label><small>1 sampai 20</small></div><input type="number" id="topk" value="8" min="1" max="20"></div>
+    <div class="row"><div><label for="thr">Ambang kemiripan</label><small>0 sampai 1. Di bawah ini, jawaban di-abstain.</small></div><input type="number" id="thr" value="0.35" min="0" max="1" step="0.05"></div>
+    <div class="row"><div><label for="theme">Tema</label></div><select id="theme"><option value="dark">Gelap</option><option value="light">Terang</option></select></div>
+  </div>
+  <div class="msg" id="msg" role="alert"></div>
+  <button class="btn" id="save">Simpan</button>
+  <h2>Kesehatan provider</h2>
+  <div class="form">
+    <div class="row"><span>Model API</span><span class="badge ok">ok · 420 ms</span></div>
+    <div class="row"><span>Database vektor</span><span class="badge ok">ok · 12 ms</span></div>
+    <div class="row"><span>Login Firebase</span><span class="badge wn">lambat</span></div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+(function(){
+var P=['dokumen','evaluasi','apikey','pengaturan'];
+function route(){var h=location.hash.slice(1);if(P.indexOf(h)<0)h='dokumen';P.forEach(function(p){document.getElementById('p-'+p).hidden=p!==h});document.querySelectorAll('.side a[data-p]').forEach(function(a){if(a.dataset.p===h)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
+addEventListener('hashchange',route);route();
+var t=document.getElementById('toast'),tt;
+function say(s){t.textContent=s;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},1800)}
+document.querySelectorAll('.sw').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')})});
+document.getElementById('drop').addEventListener('click',function(){say('Dialog upload (demo)')});
+document.getElementById('theme').addEventListener('change',function(e){if(e.target.value==='light')document.documentElement.dataset.theme='light';else delete document.documentElement.dataset.theme});
+var F=[['quota',1,10000,'Kuota'],['topk',1,20,'Top-K'],['thr',0,1,'Ambang']];
+document.getElementById('save').addEventListener('click',function(){var m=document.getElementById('msg'),bad='';F.forEach(function(f){var i=document.getElementById(f[0]),v=parseFloat(i.value),ok=!isNaN(v)&&v>=f[1]&&v<=f[2];i.setAttribute('aria-invalid',!ok);if(!ok&&!bad){bad=f[3]+' harus antara '+f[1]+' dan '+f[2]+'.';i.focus()}});m.textContent=bad;if(!bad)say('Tersimpan')});
+var prov=document.getElementById('prov');
+prov.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var row=b.closest('.row');
+if(b.dataset.act==='test')say(row.dataset.n+': koneksi ok (demo)');
+else if(b.dataset.act==='chg'){var nx=row.nextElementSibling;if(nx&&nx.classList.contains('chg')){nx.remove();return}var c=document.createElement('div');c.className='row chg';c.innerHTML='<input class="ti" type="password" autocomplete="off" placeholder="Tempel nilai baru" aria-label="Nilai baru"><button class="b2 pri" data-act="sv">Simpan</button>';row.after(c);c.querySelector('input').focus()}
+else if(b.dataset.act==='sv'){var i=row.querySelector('input'),v=i.value.trim();if(v.length<8){i.setAttribute('aria-invalid','true');say('Terlalu pendek (min 8)');return}row.previousElementSibling.querySelector('small').textContent='••••••••'+v.slice(-4);row.remove();say('Tersimpan')}});
+var kb=document.getElementById('keys'),nk=document.getElementById('nk');
+kb.addEventListener('click',function(e){var b=e.target.closest('[data-rv]');if(!b)return;b.closest('tr').children[4].innerHTML='<span class="badge er">revoked</span>';say('Kunci dicabut')});
+document.getElementById('mk').addEventListener('click',function(){var a=new Uint8Array(12);crypto.getRandomValues(a);var k='kops_live_'+[].map.call(a,function(x){return('0'+x.toString(16)).slice(-2)}).join('');document.getElementById('nkv').textContent=k;nk.hidden=false;var tr=document.createElement('tr');tr.innerHTML='<td>Kunci baru</td><td><code>'+k.slice(0,10)+'…'+k.slice(-4)+'</code></td><td>Hari ini</td><td>Belum</td><td><button class="b2" data-rv>Revoke</button></td>';kb.prepend(tr)});
+document.getElementById('cp').addEventListener('click',function(){try{navigator.clipboard.writeText(document.getElementById('nkv').textContent).then(function(){say('Tersalin')},function(){say('Salin manual')})}catch(x){say('Salin manual')}});
+document.getElementById('so').addEventListener('click',function(){say('Tersimpan')});
+})();
+</script>
+</body>
+</html>

@@ -47,6 +47,15 @@ CREATE TABLE ingestion_jobs (
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE answer_cache (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), cache_key char(64) NOT NULL UNIQUE,
+ collection_id uuid NOT NULL REFERENCES collections(id), question_text text NOT NULL,
+ pipeline_version text NOT NULL, answer jsonb NOT NULL,
+ hit_count int NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(),
+ last_hit_at timestamptz
+);
+CREATE INDEX answer_cache_collection_idx ON answer_cache(collection_id);
+
 CREATE TABLE query_events (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), collection_id uuid NOT NULL REFERENCES collections(id),
  actor_hash text, pipeline_version text NOT NULL, model_id text NOT NULL,

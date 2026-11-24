@@ -104,11 +104,18 @@ flowchart TB
 
 ### Query flow
 1. Verify user + collection visibility; normalize request and enforce input length/quotas.
-2. Embed query; filter eligible docs by collection and published version.
-3. Retrieve top semantic and lexical matches; RRF fuse, optional rerank; select 4-8 chunks within token budget.
-4. Assemble a strict context with stable chunk IDs, content and provenance; instruction hierarchy keeps source text untrusted.
-5. Call LLM with timeout/retry budget; require structured citation IDs and abstention when evidence weak.
-6. Validate citation IDs against retrieved set; strip invalid references; save redacted event and usage; stream response if enabled.
+2. **Cache lookup** (before any paid call): compute `cache_key = hash(normalized_message, collection_id, collection_fingerprint, pipeline_version)`. On hit, return the stored answer/citations as-is (zero LLM/embedding cost), log a `query_events` row with `status='cache_hit'`, and skip to step 7. On miss, continue.
+3. Embed query; filter eligible docs by collection and published version.
+4. Retrieve top semantic and lexical matches; RRF fuse, optional rerank; select 4-8 chunks within token budget.
+5. Assemble a strict context with stable chunk IDs, content and provenance; instruction hierarchy keeps source text untrusted.
+6. Call LLM with timeout/retry budget; require structured citation IDs and abstention when evidence weak.
+7. Validate citation IDs against retrieved set; strip invalid references; on a fresh (non-cached) answer, upsert it into `answer_cache` under the same key — abstained answers are cached too, since a question with no evidence will keep having no evidence until the corpus changes; save `query_events` and usage; stream response if enabled.
+
+**Cache scope — exact match only, not semantic/"similar" match.** The key is the *normalized* question text (lowercased, trimmed, collapsed whitespace), not an embedding-similarity match. Two differently-worded questions can look alike by embedding distance but need different citations ("how do I restart service X" vs "how do I stop service X") — serving a fuzzy-matched cached answer would silently break the grounded-citation guarantee in K-06. A similarity-based cache is a real future optimization but needs its own correctness review (minimum similarity threshold, re-validating citations against the *actual* asked question) before it ships — don't build it opportunistically inside this feature.
+
+**Invalidation:** `collection_fingerprint` is a value that changes whenever the collection's published document set changes (e.g. `max(documents.active_version_id update time)` or a counter bumped on every publish/archive) — this makes stale cache entries simply miss after a republish instead of needing an explicit purge.
+
+**Interaction with K-17 (coverage-gap report):** gap frequency must count cache-hit replays of a previously-abstained question, not just fresh LLM abstentions, or repeat askers of the same unanswerable question will be undercounted.
 
 ### Ingestion flow
 1. Admin requests signed upload URL; upload to private storage (avoid routing large uploads through application API).
@@ -164,6 +171,15 @@ CREATE TABLE ingestion_jobs (
  attempts int NOT NULL DEFAULT 0, locked_until timestamptz, error_code text,
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE answer_cache (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), cache_key char(64) NOT NULL UNIQUE,
+ collection_id uuid NOT NULL REFERENCES collections(id), question_text text NOT NULL,
+ pipeline_version text NOT NULL, answer jsonb NOT NULL,
+ hit_count int NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now(),
+ last_hit_at timestamptz
+);
+CREATE INDEX answer_cache_collection_idx ON answer_cache(collection_id);
+
 CREATE TABLE query_events (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), collection_id uuid NOT NULL REFERENCES collections(id),
  actor_hash text, pipeline_version text NOT NULL, model_id text NOT NULL,
@@ -210,7 +226,7 @@ Example `POST /chat`:
 ```
 Example response:
 ```json
-{"answer":"Check upstream health and traces first [1].","citations":[{"marker":1,"chunkId":"<uuid>","documentId":"<uuid>","title":"API Gateway Runbook","page":3,"excerpt":"..."}],"requestId":"req_abc123","usage":{"inputTokens":450,"outputTokens":38},"grounded":true}
+{"answer":"Check upstream health and traces first [1].","citations":[{"marker":1,"chunkId":"<uuid>","documentId":"<uuid>","title":"API Gateway Runbook","page":3,"excerpt":"..."}],"requestId":"req_abc123","usage":{"inputTokens":450,"outputTokens":38},"grounded":true,"cacheHit":false}
 ```
 
 ### Key error cases

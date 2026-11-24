@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KnowledgeOps AI — Design Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: console shell — fixed-width nav rail (public + admin routes) beside a
+     scrolling content pane; rail collapses to a horizontal tab strip under 640px. */
+  :root {
+    --bg: #10141b; --bg-raised: #171d27; --bg-sunken: #0c0f14;
+    --border: #2b3340; --fg: #e9e6df; --fg-muted: #8d99a8;
+    --accent: #5fb8c4; --accent-fg: #06222a;
+    --good: #5bb97f; --warn: #e0a940; --bad: #e2695f;
+    color-scheme: dark;
+    --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f4ef; --bg-raised: #ffffff; --bg-sunken: #ebe8e0;
+      --border: #d9d4c8; --fg: #1c2127; --fg-muted: #5b6672;
+      --accent: #1f7a86; --accent-fg: #ffffff;
+      --good: #2f8a56; --warn: #a9720f; --bad: #b8392f;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f4ef; --bg-raised: #ffffff; --bg-sunken: #ebe8e0;
+    --border: #d9d4c8; --fg: #1c2127; --fg-muted: #5b6672;
+    --accent: #1f7a86; --accent-fg: #ffffff;
+    --good: #2f8a56; --warn: #a9720f; --bad: #b8392f;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #10141b; --bg-raised: #171d27; --bg-sunken: #0c0f14;
+    --border: #2b3340; --fg: #e9e6df; --fg-muted: #8d99a8;
+    --accent: #5fb8c4; --accent-fg: #06222a;
+    --good: #5bb97f; --warn: #e0a940; --bad: #e2695f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: var(--font-sans); font-size: 14.5px; line-height: 1.55;
+  }
+  h1, h2, h3 { font-family: var(--font-sans); font-weight: 700; text-wrap: balance; margin: 0; }
+  code, .mono { font-family: var(--font-mono); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; background: var(--accent); color: var(--accent-fg);
+    padding: 8px 14px; z-index: 50; border-radius: 0 0 6px 0;
+  }
+  .skip-link:focus { left: 0; }
+
+  .shell { display: flex; height: 100%; }
+
+  /* --- Rail --- */
+  .rail {
+    width: 232px; flex: 0 0 auto; background: var(--bg-sunken); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .rail-inner { padding: 20px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; min-height: 100%; gap: 20px; }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand-name { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; }
+  .brand-tag { font-size: 11px; color: var(--fg-muted); font-family: var(--font-mono); }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); margin: 10px 0 4px 10px; }
+  .nav-link {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px;
+    color: var(--fg-muted); text-decoration: none; font-size: 13.5px; border: 1px solid transparent;
+  }
+  .nav-link:hover { background: var(--bg-raised); color: var(--fg); }
+  .nav-link.active { background: var(--bg-raised); color: var(--fg); border-color: var(--border); font-weight: 600; }
+  .nav-link.active::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+  .theme-btn {
+    display: flex; align-items: center; gap: 8px; background: var(--bg-raised); border: 1px solid var(--border);
+    color: var(--fg); padding: 7px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%;
+  }
+  .theme-btn:hover { border-color: var(--accent); }
+  .rail-note { font-size: 11px; color: var(--fg-muted); line-height: 1.5; }
+  .rail-note code { font-size: 11px; }
+
+  /* --- Mobile tab strip --- */
+  .tab-strip { display: none; }
+
+  /* --- Main --- */
+  .main { flex: 1; overflow-y: auto; min-width: 0; }
+  .main-inner {
+    max-width: 920px; padding: 32px 28px 64px;
+    padding-right: max(28px, env(safe-area-inset-right, 0px));
+  }
+  .view[hidden] { display: none; }
+  .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+  .view-header { margin-bottom: 28px; }
+  .view-header h1 { font-size: 26px; margin-bottom: 8px; }
+  .view-header h2 { font-size: 19px; margin-bottom: 6px; }
+  .lede { color: var(--fg-muted); max-width: 62ch; }
+  .actions-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* --- Buttons --- */
+  .btn {
+    font-family: var(--font-sans); font-size: 13.5px; font-weight: 600; padding: 8px 14px;
+    border-radius: 6px; border: 1px solid var(--border); background: var(--bg-raised); color: var(--fg);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm { padding: 5px 10px; font-size: 12.5px; }
+
+  /* --- Cards / grid --- */
+  .card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+  .grid { display: grid; gap: 14px; }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 720px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+  .metric-tile .metric-value { font-family: var(--font-mono); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .metric-tile .metric-label { font-size: 12.5px; color: var(--fg-muted); margin-top: 4px; }
+  .metric-tile .metric-note { font-size: 11px; color: var(--fg-muted); margin-top: 8px; }
+
+  .diagram-wrap { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-x: auto; }
+
+  /* --- Chips --- */
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    font-size: 13px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--bg-raised); color: var(--fg-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 14%, var(--bg-raised)); }
+  .chip[disabled] { cursor: not-allowed; opacity: 0.55; }
+  .chip svg { width: 11px; height: 11px; flex: 0 0 auto; }
+
+  /* --- Badges --- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-family: var(--font-mono);
+    padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); color: var(--fg-muted); white-space: nowrap;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+  .badge-good .dot { background: var(--good); } .badge-good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--border)); }
+  .badge-warn .dot { background: var(--warn); } .badge-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--border)); }
+  .badge-bad .dot { background: var(--bad); } .badge-bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); }
+  .badge-neutral .dot { background: var(--fg-muted); }
+
+  /* --- Chat --- */
+  .example-tag {
+    display: inline-block; font-size: 11px; font-family: var(--font-mono); color: var(--fg-muted);
+    border: 1px dashed var(--border); padding: 2px 8px; border-radius: 4px; margin-bottom: 10px;
+  }
+  .chat { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; }
+  .msg-user { align-self: flex-end; background: var(--bg-sunken); border: 1px solid var(--border); }
+  .msg-assistant { align-self: flex-start; background: var(--bg-raised); border: 1px solid var(--border); }
+  .cite {
+    display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px;
+    border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-size: 10.5px; font-weight: 700;
+    font-family: var(--font-mono); cursor: pointer; border: none; vertical-align: middle; margin: 0 1px; padding: 0;
+  }
+  .callout {
+    display: flex; gap: 10px; font-size: 12.5px; color: var(--fg-muted); border: 1px solid var(--border);
+    background: var(--bg-sunken); border-radius: 6px; padding: 10px 12px; margin-bottom: 14px;
+  }
+
+  .source-card {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--bg-raised); margin-bottom: 10px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .source-card.flash { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-raised)); }
+  .source-card-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .source-card-num { font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 700; }
+  .source-card-title { font-size: 13px; font-weight: 600; }
+  .source-card-meta { font-size: 11px; color: var(--fg-muted); margin-bottom: 6px; }
+  .source-card-excerpt { font-size: 12.5px; color: var(--fg-muted); font-style: italic; }
+
+  /* --- Table --- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-muted); background: var(--bg-sunken); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.wrap { white-space: normal; }
+
+  /* --- Forms --- */
+  .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; max-width: 420px; }
+  label { font-size: 12.5px; font-weight: 600; }
+  .field-hint { font-size: 11.5px; color: var(--fg-muted); }
+  input, select {
+    font-family: var(--font-sans); font-size: 13.5px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-sunken); color: var(--fg); width: 100%;
+  }
+  input::placeholder { color: var(--fg-muted); font-style: italic; }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  .dropzone {
+    border: 1.5px dashed var(--border); border-radius: 8px; padding: 26px; text-align: center;
+    color: var(--fg-muted); font-size: 13px; margin-bottom: 16px;
+  }
+  .dropzone.drag { border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+  .dropzone strong { color: var(--fg); }
+
+  .health-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .health-row:last-child { border-bottom: none; }
+
+  .gsignin {
+    display: inline-flex; align-items: center; gap: 10px; background: #fff; color: #1f1f1f; border: 1px solid #d0d0d0;
+    padding: 9px 16px; border-radius: 6px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+  }
+
+  .toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translate(-50%, 0); background: var(--bg-raised);
+    border: 1px solid var(--border); color: var(--fg); padding: 9px 16px; border-radius: 6px; font-size: 13px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3); opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .shell { flex-direction: column; }
+    .rail { width: 100%; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: visible; }
+    .rail-inner { flex-direction: row; align-items: center; padding: 10px 12px; gap: 14px; min-height: 0; width: max-content; }
+    .brand { display: none; }
+    .nav-group { flex-direction: row; gap: 4px; }
+    .nav-label { display: none; }
+    .nav-link { white-space: nowrap; }
+    .rail-foot { margin-top: 0; flex-direction: row; }
+    .rail-note { display: none; }
+    .theme-btn { width: auto; }
+    .main-inner { padding: 20px 16px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<a href="#demo" class="skip-link">Skip to content</a>
+
+<div class="shell">
+  <nav class="rail" aria-label="Primary">
+    <div class="rail-inner">
+      <div class="brand">
+        <span class="brand-name">KnowledgeOps AI</span>
+        <span class="brand-tag">design reference · static</span>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Public</div>
+        <a class="nav-link" data-hash="home" href="#home">Overview</a>
+        <a class="nav-link" data-hash="demo" href="#demo">Demo</a>
+        <a class="nav-link" data-hash="source" href="#source">Source viewer</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Admin</div>
+        <a class="nav-link" data-hash="login" href="#login">Login</a>
+        <a class="nav-link" data-hash="admin-docs" href="#admin-docs">Documents</a>
+        <a class="nav-link" data-hash="admin-evals" href="#admin-evals">Evaluations</a>
+        <a class="nav-link" data-hash="admin-settings" href="#admin-settings">Settings</a>
+      </div>
+
+      <div class="rail-foot">
+        <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle color theme">
+          <span id="themeIcon" aria-hidden="true"></span>
+          <span id="themeLabel">Dark</span>
+        </button>
+        <p class="rail-note">Mockup for <code>PRD.md</code> §5 + <code>desain/desain.md</code>. No backend wired up.</p>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main" id="mainContent">
+    <div class="main-inner">
+
+      <!-- HOME -->
+      <section class="view" data-view="home" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Showcase</div>
+          <h1>KnowledgeOps AI</h1>
+          <p class="lede">A retrieval-augmented knowledge system for IT documentation and incident runbooks. Every answer carries a verifiable citation back to the source passage — if the retrieved evidence is too weak, it abstains instead of guessing.</p>
+          <div class="actions-row">
+            <a class="btn btn-primary" href="#demo">Open the demo</a>
+            <button class="btn" id="copyCurl" type="button">Copy sample request</button>
+          </div>
+        </div>
+
+        <h2 style="margin-bottom:12px;">Architecture</h2>
+        <div class="diagram-wrap">
+<pre class="mermaid">
+flowchart TB
+  U["Visitor / Admin"] --> C["Caddy · HTTPS"]
+  C --> W["SvelteKit SSR"]
+  C --> A["FastAPI RAG service"]
+  W --> A
+  A --> P[("Postgres + pgvector")]
+  A --> S[("Object storage")]
+  A --> L["LLM + embedding provider"]
+  T["Ingestion worker"] --> P
+  T --> S
+  T --> L
+</pre>
+        </div>
+
+        <h2 style="margin:28px 0 12px;">Benchmark targets</h2>
+        <p class="lede" style="margin-bottom:14px;">MVP acceptance targets from <code>PRD.md</code> §10 — nothing has run yet, so these are goals, not results.</p>
+        <div class="grid grid-3">
+          <div class="card metric-tile"><div class="metric-value">≥ 0.80</div><div class="metric-label">Recall@5</div><div class="metric-note">measured: —</div></div>
+          <div class="card metric-tile"><div class="metric-value">≥ 0.65</div><div class="metric-label">MRR@10</div><div class="metric-note">measured: —</div></div>
+          <div class="card metric-tile"><div class="metric-value">100%</div><div class="metric-label">Citation validity</div><div class="metric-note">measured: —</div></div>
+        </div>
+      </section>
+
+      <!-- DEMO -->
+      <section class="view" data-view="demo" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Public</div>
+          <h1>Demo</h1>
+          <p class="lede">Ask a question about a public collection. Answers link back to the exact passage they came from.</p>
+        </div>
+
+        <h2 style="margin-bottom:10px;">Collection</h2>
+        <div class="chip-row" id="collectionChips" style="margin-bottom:22px;">
+          <button class="chip" aria-pressed="true" data-collection="incident">Incident Playbooks</button>
+          <button class="chip" aria-pressed="false" data-collection="k8s">Kubernetes Operations</button>
+          <button class="chip" aria-pressed="false" data-collection="pg">PostgreSQL Operations</button>
+          <button class="chip" disabled title="Admin only — not shown to public">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm2 0h4V5a2 2 0 1 0-4 0v2z"/></svg>
+            Internal Runbooks
+          </button>
+        </div>
+
+        <div class="grid grid-2" style="align-items:start;">
+          <div>
+            <h2 style="margin-bottom:10px;">Sample questions</h2>
+            <div class="chip-row" style="flex-direction:column; align-items:flex-start;" id="sampleQs">
+              <button class="chip" data-q="0" aria-pressed="true" style="border-radius:6px;">What should I check first for a 503 upstream timeout?</button>
+              <button class="chip" data-q="1" aria-pressed="false" style="border-radius:6px;">How do I roll back a failed Kubernetes deployment?</button>
+              <button class="chip" data-q="2" aria-pressed="false" style="border-radius:6px;">Safe way to add a NOT NULL column on a large Postgres table?</button>
+            </div>
+
+            <div class="callout" style="margin-top:18px;">
+              <span>⚠</span>
+              <span>Answers are generated from retrieved passages and may be wrong — verify against the linked source before acting. Public demo is rate-limited; exact limits aren't finalized yet (see <code>PRD.md</code> §4 K-08).</span>
+            </div>
+
+            <div class="example-tag">Example conversation</div>
+            <div class="chat" id="chatPane"></div>
+            <div class="actions-row">
+              <button class="btn btn-sm" type="button" id="retryBtn">Retry</button>
+              <button class="btn btn-sm" type="button" id="clearBtn">Clear session</button>
+            </div>
+          </div>
+
+          <div>
+            <h2 style="margin-bottom:10px;">Sources</h2>
+            <div id="sourceDrawer"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SOURCE VIEWER -->
+      <section class="view" data-view="source" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Public</div>
+          <h1>Source viewer</h1>
+          <p class="lede">Metadata and the exact passage a citation pointed to.</p>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <h2>NIST SP 800-61 Rev. 2 — Computer Security Incident Handling Guide</h2>
+            <span class="badge badge-good"><span class="dot"></span>published</span>
+          </div>
+          <div class="grid grid-3" style="margin-bottom:16px;">
+            <div><div class="field-hint">Collection</div><div>Incident Playbooks</div></div>
+            <div><div class="field-hint">License</div><div>Public domain (US gov. work)</div></div>
+            <div><div class="field-hint">Version</div><div class="mono">v1</div></div>
+          </div>
+          <div class="field-hint" style="margin-bottom:6px;">Section 3.2 · Page 32 · cited chunk</div>
+          <div class="source-card flash" style="margin:0;">
+            <p class="source-card-excerpt" style="font-style:normal;">"Before deep technical debugging, confirm the scope and business impact of the incident, then work outward from the failing service: upstream health, recent deploys, and resource saturation." <em>(paraphrased for this mockup — not a verbatim quote)</em></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIN -->
+      <section class="view" data-view="login" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Admin</div>
+          <h1>Admin login</h1>
+          <p class="lede">Access is limited to one allowlisted Firebase account. Public visitors don't need to sign in — the demo is open already.</p>
+        </div>
+        <div class="card" style="max-width:360px;">
+          <button class="gsignin" type="button">
+            <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.6 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.3l6-6C34.8 4.1 29.7 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.1-2.7-.5-4z"/></svg>
+            Sign in with Google
+          </button>
+          <p class="field-hint" style="margin-top:14px;">No signup flow exists — an unlisted account is rejected at the server with 403.</p>
+        </div>
+      </section>
+
+      <!-- ADMIN DOCUMENTS -->
+      <section class="view" data-view="admin-docs" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Admin</div>
+          <h1>Documents</h1>
+          <p class="lede">Upload, track ingestion, publish or archive versions.</p>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <strong>Drop a PDF, Markdown or TXT file here</strong><br>to start ingestion, or click to browse.
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Document</th><th>Collection</th><th>Visibility</th><th>License</th><th>Version</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="wrap">NIST SP 800-61 Rev. 2</td><td>Incident Playbooks</td><td><span class="badge badge-neutral"><span class="dot"></span>public</span></td><td>Public domain</td><td class="mono">v1</td><td><span class="badge badge-good"><span class="dot"></span>published</span></td></tr>
+              <tr><td class="wrap">CISA Incident &amp; Vulnerability Response Playbooks</td><td>Incident Playbooks</td><td><span class="badge badge-neutral"><span class="dot"></span>public</span></td><td>Public domain</td><td class="mono">v1</td><td><span class="badge badge-good"><span class="dot"></span>published</span></td></tr>
+              <tr><td class="wrap">Kubernetes Docs — Rolling Back a Deployment</td><td>Container Operations</td><td><span class="badge badge-neutral"><span class="dot"></span>public</span></td><td>CC BY 4.0</td><td class="mono">v2</td><td><span class="badge badge-good"><span class="dot"></span>published</span></td></tr>
+              <tr><td class="wrap">PostgreSQL Docs — ALTER TABLE</td><td>Database Operations</td><td><span class="badge badge-neutral"><span class="dot"></span>public</span></td><td>PostgreSQL License</td><td class="mono">v1</td><td><span class="badge badge-good"><span class="dot"></span>published</span></td></tr>
+              <tr><td class="wrap">legacy-network-diagrams.pdf</td><td>Container Operations</td><td><span class="badge badge-neutral"><span class="dot"></span>public</span></td><td>—</td><td class="mono">v1</td><td><span class="badge badge-bad"><span class="dot"></span>failed</span></td></tr>
+              <tr><td class="wrap">Internal Postgres Runbooks</td><td>Database Operations</td><td><span class="badge badge-warn"><span class="dot"></span>private</span></td><td>Internal</td><td class="mono">v1</td><td><span class="badge badge-neutral"><span class="dot"></span>draft</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="field-hint" style="margin-top:10px;">legacy-network-diagrams.pdf failed: image-only PDF rejected — no extractable text (see <code>PRD.md</code> §6 ingestion flow).</p>
+      </section>
+
+      <!-- ADMIN EVALUATIONS -->
+      <section class="view" data-view="admin-evals" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Admin</div>
+          <h1>Evaluations</h1>
+          <p class="lede">Retrieval quality against the curated QA set, plus abstained queries that point at missing docs.</p>
+        </div>
+
+        <div class="card" style="margin-bottom:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <h2>network-runbooks-v1 — MVP targets</h2>
+            <button class="btn btn-sm" disabled title="Needs the retrieval pipeline — milestone M2/M3">Start evaluation run</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Metric</th><th>Target</th><th>Measured</th></tr></thead>
+              <tbody>
+                <tr><td>Recall@5</td><td class="mono">≥ 0.80</td><td class="mono">—</td></tr>
+                <tr><td>MRR@10</td><td class="mono">≥ 0.65</td><td class="mono">—</td></tr>
+                <tr><td>Citation validity</td><td class="mono">100%</td><td class="mono">—</td></tr>
+                <tr><td>Abstention (unanswerable set)</td><td class="mono">≥ 0.90</td><td class="mono">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-hint" style="margin-top:10px;">No run has executed yet — this is the target table from <code>PRD.md</code> §10, not a result.</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <h2>Coverage gaps (K-17)</h2>
+            <span class="example-tag" style="margin:0;">Example data — feature not wired up</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Query</th><th>Times asked</th><th>Tag</th></tr></thead>
+              <tbody>
+                <tr><td class="wrap">"Does this support OCR for scanned PDFs?"</td><td class="mono">14</td><td>unsupported-feature</td></tr>
+                <tr><td class="wrap">"What's your SLA for incident response?"</td><td class="mono">9</td><td>out-of-corpus</td></tr>
+                <tr><td class="wrap">"How do I reset my own account password?"</td><td class="mono">6</td><td>out-of-corpus</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN SETTINGS -->
+      <section class="view" data-view="admin-settings" hidden>
+        <div class="view-header">
+          <div class="eyebrow">Admin</div>
+          <h1>Settings</h1>
+          <p class="lede">Quotas, pinned model versions and retrieval parameters.</p>
+        </div>
+
+        <form id="settingsForm">
+          <div class="grid grid-2">
+            <div class="form-row">
+              <label for="quotaDaily">Public daily quota (req/IP)</label>
+              <input id="quotaDaily" placeholder="not decided — PRD §4 K-08">
+            </div>
+            <div class="form-row">
+              <label for="spendCap">Daily provider spend cap (USD)</label>
+              <input id="spendCap" placeholder="not decided — PRD §4 K-08">
+            </div>
+            <div class="form-row">
+              <label for="llmModel">LLM model</label>
+              <input id="llmModel" placeholder="not pinned — PRD §7">
+            </div>
+            <div class="form-row">
+              <label for="embModel">Embedding model</label>
+              <input id="embModel" placeholder="not pinned — PRD §7">
+            </div>
+            <div class="form-row">
+              <label for="topK">Retrieved chunks per answer</label>
+              <input id="topK" value="6">
+              <span class="field-hint">PRD §6 query flow: select 4–8 chunks within token budget.</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </form>
+
+        <h2 style="margin:28px 0 10px;">Provider health</h2>
+        <div class="card">
+          <div class="health-row"><span>LLM provider</span><span class="badge badge-neutral"><span class="dot"></span>not configured</span></div>
+          <div class="health-row"><span>Embedding provider</span><span class="badge badge-neutral"><span class="dot"></span>not configured</span></div>
+          <div class="health-row"><span>Object storage</span><span class="badge badge-neutral"><span class="dot"></span>not configured</span></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- theme ----------
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var themeIcon = document.getElementById('themeIcon');
+  var themeLabel = document.getElementById('themeLabel');
+  var SUN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>';
+  var MOON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+
+  function getStored(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function setStored(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) {}
+  }
+
+  function applyTheme(mode) {
+    if (mode === 'light') { root.setAttribute('data-theme', 'light'); themeIcon.innerHTML = SUN; themeLabel.textContent = 'Light'; }
+    else { root.setAttribute('data-theme', 'dark'); themeIcon.innerHTML = MOON; themeLabel.textContent = 'Dark'; }
+  }
+  applyTheme(getStored('ko-theme') === 'light' ? 'light' : 'dark');
+  themeBtn.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    setStored('ko-theme', next);
+  });
+
+  // ---------- routing ----------
+  var views = Array.prototype.slice.call(document.querySelectorAll('.view'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var VALID = views.map(function (v) { return v.dataset.view; });
+
+  function route() {
+    var name = location.hash.replace('#', '') || 'home';
+    if (VALID.indexOf(name) === -1) name = 'home';
+    views.forEach(function (v) { v.hidden = v.dataset.view !== name; });
+    links.forEach(function (l) {
+      var on = l.dataset.hash === name;
+      l.classList.toggle('active', on);
+      if (on) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
+    });
+    document.getElementById('mainContent').scrollTop = 0;
+  }
+  window.addEventListener('hashchange', route);
+  route();
+
+  // ---------- toast ----------
+  var toastEl = document.getElementById('toast');
+  var toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+  }
+
+  // ---------- demo: collection chips ----------
+  document.querySelectorAll('#collectionChips .chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      if (chip.disabled) return;
+      document.querySelectorAll('#collectionChips .chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      chip.setAttribute('aria-pressed', 'true');
+    });
+  });
+
+  // ---------- demo: sample Q&A ----------
+  var QA = [
+    {
+      q: "What should I check first for a 503 upstream timeout?",
+      a: 'Treat it as a possible availability incident: confirm scope and impact before deep debugging, then check upstream health, recent deploys and resource saturation on the failing service <button class="cite" data-n="1">1</button>. Preserve logs and a timeline as you go so the incident record stays reconstructable <button class="cite" data-n="2">2</button>.',
+      sources: [
+        { n: 1, title: 'CISA Cybersecurity Incident and Vulnerability Response Playbooks', meta: 'Incident Playbooks · Incident Response Playbook', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' },
+        { n: 2, title: 'NIST SP 800-61 Rev. 2', meta: 'Incident Playbooks · Incident Handling Checklist', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' }
+      ]
+    },
+    {
+      q: "How do I roll back a failed Kubernetes deployment?",
+      a: 'Run <code>kubectl rollout undo deployment/&lt;name&gt;</code> to revert to the previous ReplicaSet <button class="cite" data-n="1">1</button>. Check <code>kubectl rollout history deployment/&lt;name&gt;</code> first if you need a specific earlier revision rather than just the last one <button class="cite" data-n="2">2</button>.',
+      sources: [
+        { n: 1, title: 'Kubernetes Docs — Rolling Back a Deployment', meta: 'Container Operations · Checking Rollout History', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' },
+        { n: 2, title: 'Kubernetes Docs — Rolling Back a Deployment', meta: 'Container Operations · Rollout History', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' }
+      ]
+    },
+    {
+      q: "Safe way to add a NOT NULL column on a large Postgres table?",
+      a: 'Add the column as nullable first, backfill it in batches, then attach the NOT NULL constraint so it validates without a full-table rewrite lock <button class="cite" data-n="1">1</button>. Watch replication lag while the backfill runs before applying it to the primary during busy hours <button class="cite" data-n="2">2</button>.',
+      sources: [
+        { n: 1, title: 'PostgreSQL Docs — ALTER TABLE', meta: 'Database Operations · Adding a Column', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' },
+        { n: 2, title: 'PostgreSQL Docs — ALTER TABLE', meta: 'Database Operations · Notes', excerpt: 'Paraphrased for this mockup — not a verbatim quote.' }
+      ]
+    }
+  ];
+
+  var chatPane = document.getElementById('chatPane');
+  var sourceDrawer = document.getElementById('sourceDrawer');
+  var activeQ = 0;
+
+  function renderQA(i) {
+    activeQ = i;
+    var item = QA[i];
+    chatPane.innerHTML =
+      '<div class="msg msg-user">' + item.q + '</div>' +
+      '<div class="msg msg-assistant">' + item.a + '</div>';
+    sourceDrawer.innerHTML = item.sources.map(function (s) {
+      return '<div class="source-card" data-n="' + s.n + '">' +
+        '<div class="source-card-head"><span class="source-card-num">[' + s.n + ']</span><span class="source-card-title">' + s.title + '</span></div>' +
+        '<div class="source-card-meta">' + s.meta + '</div>' +
+        '<div class="source-card-excerpt">' + s.excerpt + '</div>' +
+      '</div>';
+    }).join('');
+    document.querySelectorAll('#sampleQs .chip').forEach(function (c, idx) {
+      c.setAttribute('aria-pressed', idx === i ? 'true' : 'false');
+    });
+    chatPane.querySelectorAll('.cite').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var card = sourceDrawer.querySelector('.source-card[data-n="' + btn.dataset.n + '"]');
+        if (!card) return;
+        card.scrollIntoView({ block: 'nearest' });
+        card.classList.add('flash');
+        setTimeout(function () { card.classList.remove('flash'); }, 1200);
+      });
+    });
+  }
+  renderQA(0);
+
+  document.querySelectorAll('#sampleQs .chip').forEach(function (chip, idx) {
+    chip.addEventListener('click', function () { renderQA(idx); });
+  });
+  document.getElementById('retryBtn').addEventListener('click', function () { renderQA(activeQ); toast('Replayed the example answer.'); });
+  document.getElementById('clearBtn').addEventListener('click', function () {
+    chatPane.innerHTML = '';
+    sourceDrawer.innerHTML = '';
+    document.querySelectorAll('#sampleQs .chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    toast('Session cleared.');
+  });
+
+  // ---------- admin documents: dropzone ----------
+  var dz = document.getElementById('dropzone');
+  if (dz) {
+    ['dragenter', 'dragover'].forEach(function (evt) {
+      dz.addEventListener(evt, function (e) { e.preventDefault(); dz.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (evt) {
+      dz.addEventListener(evt, function (e) { e.preventDefault(); dz.classList.remove('drag'); });
+    });
+    dz.addEventListener('drop', function () { toast('Design preview — upload wiring comes in Stage 2.'); });
+    dz.addEventListener('click', function () { toast('Design preview — upload wiring comes in Stage 2.'); });
+  }
+
+  // ---------- settings form ----------
+  var settingsForm = document.getElementById('settingsForm');
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      toast('Design preview — saving isn\'t wired up yet.');
+    });
+  }
+
+  // ---------- copy curl ----------
+  var copyBtn = document.getElementById('copyCurl');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function () {
+      var sample = 'curl -X POST https://knowledge.example.com/api/v1/chat \\\n' +
+        '  -H "Content-Type: application/json" \\\n' +
+        '  -d \'{"collectionSlug":"incident-playbooks","message":"How do I roll back a failed Kubernetes deployment?"}\'';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(sample).then(function () { toast('Copied sample request.'); }, function () { toast('Copy blocked by the browser — select the text instead.'); });
+      } else {
+        toast('Copy not supported here — select the text instead.');
+      }
+    });
+  }
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.4.1/mermaid.min.js"></script>
+<script>
+  try { mermaid.initialize({ startOnLoad: true, theme: 'dark' }); } catch (e) {}
+</script>
+</body>
+</html>
