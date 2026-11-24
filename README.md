@@ -2,6 +2,27 @@
 
 RAG knowledge system for IT docs/incident runbooks — SvelteKit + FastAPI + Postgres/pgvector, VPS-first. Spec/design docs live in `docs/`; everything else below is real source code or infra config.
 
+## Stack
+
+**Running today:**
+
+![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?logo=svelte&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![pgvector](https://img.shields.io/badge/pgvector-4169E1)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Caddy](https://img.shields.io/badge/Caddy-1F88C0?logo=caddy&logoColor=white)
+
+**Planned, not wired up yet** (model/provider still deliberately unpinned — see `docs/PRD.md` §7):
+
+![Firebase Auth](https://img.shields.io/badge/Firebase_Auth-FFCA28?logo=firebase&logoColor=black)
+![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
+![LLM provider](https://img.shields.io/badge/LLM_provider-TBD-lightgrey)
+![Embedding provider](https://img.shields.io/badge/Embedding_provider-TBD-lightgrey)
+
 - `docs/PRD.md` — full product requirements, feature/API/data design and VPS-first architecture.
 - `docs/IMPLEMENTATION.md` — staged build and deployment implementation checklist.
 - `docs/DEPLOY_VPS.md` — VPS deployment topology, operations and constraints.
@@ -11,7 +32,7 @@ RAG knowledge system for IT docs/incident runbooks — SvelteKit + FastAPI + Pos
 - `infra/.env.example` — sample environment keys (no credentials).
 - `infra/Caddyfile` — HTTPS reverse proxy template, adapt API health/routes.
 
-**Status:** the query path (cache → retrieve → generate → validate citations) is real and runs locally end to end, against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see `docs/PRD.md` §15). Ingestion (PDF parsing/chunking), Firebase auth, and the admin UI are still stubs; see `docs/IMPLEMENTATION.md` for the remaining milestones.
+**Status:** the query path (cache → retrieve → generate → validate citations) and every page in `docs/PRD.md` §5 are real, running against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see `docs/PRD.md` §15). The admin pages show real DB data (not fabricated rows) but have **no auth enforced yet** — don't expose them publicly. Ingestion (PDF parsing/chunking) and Firebase auth are still stubs; see `docs/IMPLEMENTATION.md` for the remaining milestones.
 
 Default production target: a VPS with Docker Compose. Vercel is optional, for the frontend + demo-mode fallback (`docs/PRD.md` §6).
 
@@ -19,7 +40,7 @@ Default production target: a VPS with Docker Compose. Vercel is optional, for th
 ```
 docs/                 Everything written to be read, not run — PRD, implementation plan,
                       deploy runbook, design notes/mockups, seed-corpus sourcing.
-apps/web/             SvelteKit SSR + BFF — /demo page and /api/v1/chat proxy are real
+apps/web/             SvelteKit SSR + BFF — every page is real, admin pages have no auth yet
 services/rag/         Python FastAPI: real retriever/cache/citation-validator, mock embedder+generator
 services/worker/      Python: ingestion worker entrypoint (stub — M1)
 database/migrations/  Versioned SQL (0001_init.sql = core schema)
