@@ -34,8 +34,7 @@
 			label: 'Public',
 			links: [
 				{ href: '/', text: 'Overview' },
-				{ href: '/demo', text: 'Demo' },
-				{ href: '/sources/seed', text: 'Source viewer' }
+				{ href: '/demo', text: 'Demo' }
 			]
 		},
 		{

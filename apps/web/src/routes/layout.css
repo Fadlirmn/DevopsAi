@@ -348,6 +348,21 @@ tbody tr:last-child td {
 	color: var(--fg);
 }
 
+/* --- Google sign-in button (visual only — no auth backend yet) --- */
+.gsignin {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	background: #fff;
+	color: #1f1f1f;
+	border: 1px solid #d0d0d0;
+	padding: 9px 16px;
+	border-radius: 6px;
+	font-weight: 600;
+	font-size: 13.5px;
+	cursor: pointer;
+}
+
 /* --- Forms --- */
 textarea,
 input {

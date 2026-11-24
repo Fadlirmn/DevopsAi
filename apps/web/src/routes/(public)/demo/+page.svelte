@@ -174,6 +174,9 @@
 					</div>
 					<div class="source-card-meta">{c.page ? `Page ${c.page}` : ''}</div>
 					<div class="source-card-excerpt">{c.excerpt}</div>
+					<a href={`/sources/${c.documentId}?chunk=${c.chunkId}`} style="font-size: 12px;"
+						>View full document →</a
+					>
 				</div>
 			{/each}
 		{/if}

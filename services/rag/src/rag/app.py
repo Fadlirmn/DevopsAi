@@ -12,6 +12,7 @@ import json
 import os
 import time
 import uuid
+from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -26,6 +27,7 @@ from .retriever import PgRetriever
 
 PIPELINE_VERSION = os.environ.get("PIPELINE_VERSION", "dev-mock-v1")
 MODEL_ID = "mock-dev-v1"
+RETRIEVAL_TOP_K = 6  # PRD.md §6 query flow: select 4-8 chunks within token budget
 
 app = FastAPI(title="knowledgeops-rag")
 _embedder = MockEmbedder()
@@ -159,6 +161,75 @@ async def coverage_gaps() -> list[dict]:
     ]
 
 
+@app.get("/admin/settings")
+async def get_settings() -> dict:
+    """PRD.md §5 /admin/settings. Returns the real running config — there's
+    no settings table/persistence yet, so this is read-only, not an editable
+    form that would silently fail to save."""
+    pool = await get_pool()
+    try:
+        await pool.fetchval("SELECT 1")
+        db_ok = True
+    except Exception:
+        db_ok = False
+    return {
+        "pipelineVersion": PIPELINE_VERSION,
+        "modelId": MODEL_ID,
+        "embedder": type(_embedder).__name__,
+        "generator": type(_generator).__name__,
+        "retrievalTopK": RETRIEVAL_TOP_K,
+        "healthChecks": [
+            {"name": "Postgres", "status": "connected" if db_ok else "unreachable"},
+            {"name": "LLM provider", "status": "not configured (mock mode)"},
+            {"name": "Embedding provider", "status": "not configured (mock mode)"},
+        ],
+    }
+
+
+@app.get("/sources/{document_id}")
+async def get_source(document_id: UUID) -> dict:
+    """PRD.md §5 /sources/[id] — public detail view. Visibility enforced for
+    real here (unlike the /admin/* stubs): this route is public-facing."""
+    pool = await get_pool()
+    doc = await pool.fetchrow(
+        """
+        SELECT d.id, d.title, col.title AS collection_title, col.slug AS collection_slug,
+               v.id AS version_id, v.version_number
+        FROM documents d
+        JOIN collections col ON col.id = d.collection_id
+         AND col.visibility = 'public' AND col.status = 'published'
+        JOIN document_versions v ON v.id = d.active_version_id
+        WHERE d.id = $1 AND d.status = 'published'
+        """,
+        document_id,
+    )
+    if doc is None:
+        raise HTTPException(status_code=404, detail="source not found")
+
+    chunks = await pool.fetch(
+        "SELECT id, ordinal, page_number, heading, content FROM chunks "
+        "WHERE version_id = $1 ORDER BY ordinal",
+        doc["version_id"],
+    )
+    return {
+        "documentId": str(doc["id"]),
+        "title": doc["title"],
+        "collectionTitle": doc["collection_title"],
+        "collectionSlug": doc["collection_slug"],
+        "versionNumber": doc["version_number"],
+        "chunks": [
+            {
+                "chunkId": str(c["id"]),
+                "ordinal": c["ordinal"],
+                "page": c["page_number"],
+                "heading": c["heading"],
+                "content": c["content"],
+            }
+            for c in chunks
+        ],
+    }
+
+
 def _build_citations(cited_chunk_ids: list[str], hits: list[ChunkHit]) -> list[Citation]:
     by_id = {h.chunk_id: h for h in hits}
     out = []
@@ -202,7 +273,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         return ChatResponse(**cached, cacheHit=True, requestId=request_id)
 
     start = time.monotonic()
-    hits = await _retriever.retrieve(message, collection["slug"], 6)
+    hits = await _retriever.retrieve(message, collection["slug"], RETRIEVAL_TOP_K)
     raw_answer = await _generator.answer(message, hits)
     answer = validate_citations(raw_answer, hits)
     latency_ms = int((time.monotonic() - start) * 1000)
