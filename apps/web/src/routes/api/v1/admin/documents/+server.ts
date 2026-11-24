@@ -1,6 +1,7 @@
 // Admin /documents per PRD.md §8.
-// No Firebase ID token check yet — K-02 admin auth is still a stub (PRD.md §9).
-// Do not deploy this route publicly until that's wired up.
+// Auth is enforced upstream in hooks.server.ts (PRD.md §9 K-02) — this
+// handler only runs for an already-verified admin request. The RAG service
+// itself still trusts any caller; it relies on not being publicly reachable.
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

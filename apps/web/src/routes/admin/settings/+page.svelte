@@ -21,14 +21,6 @@
 	Running configuration and provider health.
 </p>
 
-<div class="callout" style="border-color: var(--warn); color: var(--warn);">
-	<span>⚠</span>
-	<span>
-		No admin auth is enforced on this page yet (PRD.md §9 K-02 is still a stub) — don't expose this
-		route publicly as-is.
-	</span>
-</div>
-
 {#if !settings}
 	<p style="color: var(--bad);">Could not load settings — is the RAG service running?</p>
 {:else}

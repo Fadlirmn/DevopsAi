@@ -37,14 +37,6 @@
 	Upload, ingestion status, and publish/archive controls.
 </p>
 
-<div class="callout" style="border-color: var(--warn); color: var(--warn);">
-	<span>⚠</span>
-	<span>
-		No admin auth is enforced on this page yet (Firebase ID-token verification, PRD.md §9 K-02,
-		is still a stub) — don't expose this route publicly as-is.
-	</span>
-</div>
-
 <div
 	class="dropzone"
 	class:drag={dragging}

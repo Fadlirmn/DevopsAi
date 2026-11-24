@@ -85,8 +85,12 @@ async def list_collections() -> list[dict]:
 async def list_admin_documents() -> list[dict]:
     """PRD.md §8 GET /admin/documents — documents and their active version.
 
-    No auth check here yet (Firebase admin verification is still a stub,
-    PRD.md §9 K-02) — do not deploy this route publicly until that lands.
+    This process has no auth check of its own — the SvelteKit BFF verifies
+    the Firebase ID token in hooks.server.ts (PRD.md §9 K-02) before ever
+    calling this endpoint. Only safe because this service isn't meant to be
+    publicly reachable; it has nothing to fall back on if that assumption
+    breaks (e.g. the Vercel+VPS split in PRD.md §6 — add a shared-secret
+    check here before exposing this over the public internet).
     """
     pool = await get_pool()
     rows = await pool.fetch(

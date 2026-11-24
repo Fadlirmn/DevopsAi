@@ -14,14 +14,6 @@
 	Retrieval quality against a curated QA set, plus abstained questions that point at missing docs.
 </p>
 
-<div class="callout" style="border-color: var(--warn); color: var(--warn);">
-	<span>⚠</span>
-	<span>
-		No admin auth is enforced on this page yet (PRD.md §9 K-02 is still a stub) — don't expose this
-		route publicly as-is.
-	</span>
-</div>
-
 <div class="card" style="margin-bottom: 24px;">
 	<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
 		<h2 style="font-size: 15px;">network-runbooks-v1 — MVP targets</h2>

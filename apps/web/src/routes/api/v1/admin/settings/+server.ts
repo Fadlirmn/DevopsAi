@@ -1,5 +1,5 @@
-// Admin /settings per PRD.md §5. No auth check yet — see K-02 note on the
-// sibling /admin/documents route. Read-only: there's no settings table yet.
+// Admin /settings per PRD.md §5. Auth enforced upstream in hooks.server.ts
+// (PRD.md §9 K-02). Read-only: there's no settings table yet.
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 

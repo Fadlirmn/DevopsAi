@@ -1,5 +1,5 @@
-// Admin /coverage-gaps per PRD.md §8 (K-17). No auth check yet — see K-02
-// note on the sibling /admin/documents route.
+// Admin /coverage-gaps per PRD.md §8 (K-17). Auth enforced upstream in
+// hooks.server.ts (PRD.md §9 K-02).
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
