@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KnowledgeOps AI — Desain</title>
+<style>
+/* Token: Radix Colors slate (netral) + indigo (aksen). Dark default. 60/30/10 */
+:root{color-scheme:dark;
+--bg:#111113;--bg2:#18191b;--surf:#212225;--surf2:#272a2d;--line:#363a3f;--line2:#43484e;
+--mute:#b0b4ba;--text:#edeef0;--acc:#3e63dd;--acc-h:#5472e4;--acc-soft:#182449;--acc-line:#304384;--acc-txt:#9eb1ff;
+--ok:#3dd68c;--warn:#ffc53d;--err:#ff9592;--on-acc:#fff;
+--r:10px;--font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root[data-theme="light"]{color-scheme:light;
+--bg:#fcfcfd;--bg2:#f9f9fb;--surf:#f0f0f3;--surf2:#e8e8ec;--line:#d9d9e0;--line2:#cdced6;
+--mute:#60646c;--text:#1c2024;--acc:#3e63dd;--acc-h:#3358d4;--acc-soft:#edf2fe;--acc-line:#c1d0ff;--acc-txt:#3a5bc7;
+--ok:#18794e;--warn:#ab6400;--err:#cd2b31}
+*{box-sizing:border-box}
+html,body{height:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--font);display:flex;flex-direction:column}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc-txt);outline-offset:2px;border-radius:6px}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--bg2);flex-wrap:wrap}
+.logo{font-weight:700;letter-spacing:-.01em}.logo span{color:var(--acc-txt)}
+nav{display:flex;gap:4px;margin-left:8px}
+nav button{background:none;border:0;padding:6px 12px;border-radius:8px;color:var(--mute)}
+nav button[aria-selected="true"]{background:var(--acc-soft);color:var(--acc-txt)}
+.sp{flex:1}
+.btn{background:var(--surf);border:1px solid var(--line);padding:6px 12px;border-radius:8px}
+.btn:hover{background:var(--surf2)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}.btn.pri:hover{background:var(--acc-h)}
+main{flex:1;min-height:0;display:flex}
+section[hidden]{display:none}
+.view{flex:1;min-width:0;display:flex}
+/* demo */
+.chatcol{flex:1;min-width:0;display:flex;flex-direction:column}
+.bar{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+select{background:var(--surf);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit}
+.safety{font-size:13px;color:var(--mute)}
+.log{flex:1;overflow:auto;padding:20px 16px;display:flex;flex-direction:column;gap:18px}
+.msg{max-width:720px;width:100%;margin:0 auto}
+.u{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-left:auto;width:fit-content;max-width:85%}
+.a h3{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.a p{margin:0 0 10px}
+.cite{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;margin:0 1px;border-radius:6px;border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--acc-txt);font-size:12px;font-weight:600;vertical-align:1px;line-height:1}
+.cite:hover{background:var(--acc);color:var(--on-acc)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px}
+.chip{display:flex;gap:8px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;font-size:13px;max-width:230px;text-align:left}
+.chip:hover{border-color:var(--acc-line)}
+.chip b{color:var(--acc-txt)}
+.chip small{display:block;color:var(--mute)}
+.stream{display:inline-flex;gap:4px;align-items:center;color:var(--mute);font-size:13px}
+.stream i{width:6px;height:6px;border-radius:50%;background:var(--acc-txt);animation:b 1s infinite}
+.stream i:nth-child(2){animation-delay:.15s}.stream i:nth-child(3){animation-delay:.3s}
+@keyframes b{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.banner{display:flex;gap:10px;align-items:center;border:1px solid var(--err);border-radius:var(--r);padding:8px 12px;font-size:13px;margin-top:8px}
+.composer{padding:12px 16px;border-top:1px solid var(--line);background:var(--bg2)}
+.composer div{max-width:720px;margin:0 auto;display:flex;gap:8px}
+input[type=text]{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--r);padding:10px 12px;font:inherit}
+/* drawer */
+aside{width:340px;border-left:1px solid var(--line);background:var(--bg2);overflow:auto;padding:16px;flex-shrink:0}
+aside h2{margin:0 0 10px;font-size:15px}
+.src{border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:10px;background:var(--surf)}
+.src.on{border-color:var(--acc);background:var(--acc-soft)}
+.src h4{margin:0 0 2px;font-size:14px}.src .m{font-size:12px;color:var(--mute)}
+.src mark{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:3px;padding:0 2px}
+@media(max-width:860px){aside{display:none}}
+/* admin */
+.admin{flex:1;overflow:auto;padding:20px 16px}
+.wrap{max-width:980px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0 20px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.card small{color:var(--mute)}.card strong{display:block;font-size:24px;letter-spacing:-.02em}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+th{background:var(--bg2);color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor}
+.ok{color:var(--ok)}.wn{color:var(--warn)}.er{color:var(--err)}
+h2.t{margin:22px 0 8px;font-size:16px}
+.pal{display:flex;height:18px;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin-top:6px}
+.pal i{display:block}
+.empty{padding:28px;text-align:center;color:var(--mute);border:1px dashed var(--line2);border-radius:var(--r)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Knowledge<span>Ops</span> AI</div>
+  <nav role="tablist" aria-label="Halaman">
+    <button role="tab" id="t-demo" aria-selected="true" data-v="demo">/demo</button>
+    <button role="tab" id="t-admin" aria-selected="false" data-v="admin">/admin/evaluations</button>
+  </nav>
+  <span class="sp"></span>
+  <button class="btn" id="theme" aria-label="Ganti tema">Dark</button>
+</header>
+<main>
+<section class="view" id="demo" aria-labelledby="t-demo">
+  <div class="chatcol">
+    <div class="bar">
+      <label for="col" class="safety">Collection</label>
+      <select id="col"><option>Docs Produk v2</option><option>Panduan API</option></select>
+      <span class="sp"></span>
+      <button class="btn" id="clear">Clear session</button>
+    </div>
+    <div class="log" id="log" aria-live="polite" aria-relevant="additions text">
+      <div class="msg"><div class="u">Berapa batas rate limit untuk API publik?</div></div>
+      <div class="msg a">
+        <h3>Jawaban</h3>
+        <p>API publik dibatasi <b>60 request per menit</b> per kunci<button class="cite" data-s="1" aria-label="Sumber 1">1</button>. Kalau lewat batas, server balas HTTP 429 dan header <code>Retry-After</code><button class="cite" data-s="2" aria-label="Sumber 2">2</button>. Admin bisa naikkan kuota lewat halaman settings<button class="cite" data-s="3" aria-label="Sumber 3">3</button>.</p>
+        <div class="chips">
+          <button class="chip" data-s="1"><b>1</b><span>Rate Limits<small>api-guide · hal. 12</small></span></button>
+          <button class="chip" data-s="2"><b>2</b><span>Error Codes<small>api-guide · hal. 18</small></span></button>
+          <button class="chip" data-s="3"><b>3</b><span>Quota Settings<small>admin-manual · §4</small></span></button>
+        </div>
+      </div>
+      <div class="msg a">
+        <div class="stream" role="status"><i></i><i></i><i></i><span>Mencari di dokumen…</span></div>
+        <div class="banner er" role="alert"><span>Koneksi putus. Jawaban belum lengkap.</span><button class="btn">Retry</button></div>
+      </div>
+    </div>
+    <div class="composer"><div>
+      <input type="text" id="q" placeholder="Tanya sesuatu dari dokumen…" aria-label="Pertanyaan">
+      <button class="btn pri">Kirim</button>
+    </div>
+    <p class="safety" style="max-width:720px;margin:8px auto 0">Jawaban dibuat AI dari dokumen terpilih. Cek sumber sebelum dipakai. Teks model ditampilkan sebagai teks biasa, bukan HTML.</p></div>
+  </div>
+  <aside aria-label="Sources drawer">
+    <h2>Sumber</h2>
+    <div class="src" id="s1"><h4>Rate Limits</h4><div class="m">api-guide.pdf · hal. 12 · v3</div><p style="margin:8px 0 0;font-size:13px">…setiap kunci API dibatasi <mark>60 request per menit</mark>. Batas dihitung per jendela geser…</p></div>
+    <div class="src" id="s2"><h4>Error Codes</h4><div class="m">api-guide.pdf · hal. 18 · v3</div><p style="margin:8px 0 0;font-size:13px">…respons <mark>429 Too Many Requests</mark> menyertakan header Retry-After…</p></div>
+    <div class="src" id="s3"><h4>Quota Settings</h4><div class="m">admin-manual.md · §4 · v1</div><p style="margin:8px 0 0;font-size:13px">…ubah kuota di <mark>Settings → Quota</mark>, lalu simpan…</p></div>
+    <a class="m" style="font-size:13px;color:var(--acc-txt)" href="#demo">Buka /sources/[id] →</a>
+  </aside>
+</section>
+
+<section class="view" id="admin" hidden aria-labelledby="t-admin">
+  <div class="admin"><div class="wrap">
+    <h1 style="margin:0;font-size:20px">Evaluations</h1>
+    <div class="grid">
+      <div class="card"><small>Recall@5</small><strong>0.91</strong></div>
+      <div class="card"><small>MRR</small><strong>0.78</strong></div>
+      <div class="card"><small>Grounding</small><strong>96%</strong></div>
+      <div class="card"><small>Latency p50</small><strong>1.8 s</strong></div>
+      <div class="card"><small>Biaya / 100 q</small><strong>$0.42</strong></div>
+    </div>
+    <h2 class="t">Daftar run</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Run</th><th>Config</th><th>Status</th><th>Recall@5</th><th>MRR</th><th>Latency</th></tr></thead>
+      <tbody>
+        <tr><td>#42</td><td>k=8, rerank on</td><td><span class="badge ok">succeeded</span></td><td class="n">0.91</td><td class="n">0.78</td><td class="n">1.8 s</td></tr>
+        <tr><td>#41</td><td>k=5, rerank off</td><td><span class="badge ok">succeeded</span></td><td class="n">0.84</td><td class="n">0.71</td><td class="n">1.2 s</td></tr>
+        <tr><td>#43</td><td>k=8, model baru</td><td><span class="badge wn">running</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+        <tr><td>#40</td><td>k=3</td><td><span class="badge er">failed</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+      </tbody></table></div>
+    <h2 class="t">Coverage gap (di-abstain, urut frekuensi)</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Query</th><th>Jumlah</th></tr></thead>
+      <tbody>
+        <tr><td>cara reset kunci API</td><td class="n">23</td></tr>
+        <tr><td>harga paket enterprise</td><td class="n">17</td></tr>
+        <tr><td>webhook retry policy</td><td class="n">9</td></tr>
+      </tbody></table></div>
+    <h2 class="t">Palette 60 / 30 / 10</h2>
+    <div class="pal" aria-label="60 persen slate-1, 30 persen slate-3, 10 persen indigo-9"><i style="flex:60;background:var(--bg)"></i><i style="flex:30;background:var(--surf)"></i><i style="flex:10;background:var(--acc)"></i></div>
+    <p class="safety">Radix Colors: slate (netral) + indigo (aksen). Dark default, light opsional.</p>
+    <div class="empty" style="margin-top:16px">Empty state: belum ada run. <button class="btn pri" style="margin-left:8px">Jalankan evaluasi</button></div>
+  </div></div>
+</section>
+</main>
+<script>
+(function(){
+var tabs=document.querySelectorAll('nav button'),views={demo:document.getElementById('demo'),admin:document.getElementById('admin')};
+function show(v){tabs.forEach(function(t){t.setAttribute('aria-selected',t.dataset.v===v)});for(var k in views)views[k].hidden=k!==v}
+tabs.forEach(function(t){t.addEventListener('click',function(){show(t.dataset.v)})});
+function pick(n){document.querySelectorAll('.src').forEach(function(s){s.classList.toggle('on',s.id==='s'+n)});var el=document.getElementById('s'+n);if(el)el.scrollIntoView({block:'nearest'})}
+document.querySelectorAll('[data-s]').forEach(function(b){b.addEventListener('click',function(){pick(b.dataset.s)})});
+var th=document.getElementById('theme');
+th.addEventListener('click',function(){var r=document.documentElement,l=r.dataset.theme==='light';if(l){delete r.dataset.theme}else{r.dataset.theme='light'}th.textContent=l?'Dark':'Light'});
+document.getElementById('clear').addEventListener('click',function(){var l=document.getElementById('log');l.innerHTML='<div class="empty" style="margin:auto">Sesi kosong. Pilih collection, lalu tanya.</div>'});
+})();
+</script>
+</body>
+</html>

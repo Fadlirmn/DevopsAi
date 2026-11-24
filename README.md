@@ -1,28 +1,31 @@
-# knowledgeops-ai — VPS-first PRD package
+# knowledgeops-ai
 
-**Version:** 2.0 · Date: 2026-11-23
+RAG knowledge system for IT docs/incident runbooks — SvelteKit + FastAPI + Postgres/pgvector, VPS-first. Spec/design docs live in `docs/`; everything else below is real source code or infra config.
 
-Scope: RAG, pgvector, Python worker, SvelteKit, TLS.
-
-- `PRD.md` — full product requirements, feature/API/data design and VPS-first architecture.
-- `IMPLEMENTATION.md` — staged build and deployment implementation checklist.
-- `infra/DEPLOY_VPS.md` — VPS deployment topology, operations and constraints.
+- `docs/PRD.md` — full product requirements, feature/API/data design and VPS-first architecture.
+- `docs/IMPLEMENTATION.md` — staged build and deployment implementation checklist.
+- `docs/DEPLOY_VPS.md` — VPS deployment topology, operations and constraints.
+- `docs/DESIGN.md` — UI design checklist, component list, real-product references.
+- `docs/mockups/` — static HTML design mockups (not application code — see `docs/mockups/README.md`).
+- `docs/SEED_CORPUS_SOURCES.md` — license-checked real documents used as demo seed data.
 - `infra/.env.example` — sample environment keys (no credentials).
 - `infra/Caddyfile` — HTTPS reverse proxy template, adapt API health/routes.
 
-**Status:** the query path (cache → retrieve → generate → validate citations) is real and runs locally end to end, against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see PRD.md §15). Ingestion (PDF parsing/chunking), Firebase auth, and the admin UI are still stubs; see `IMPLEMENTATION.md` for the remaining milestones.
+**Status:** the query path (cache → retrieve → generate → validate citations) is real and runs locally end to end, against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see `docs/PRD.md` §15). Ingestion (PDF parsing/chunking), Firebase auth, and the admin UI are still stubs; see `docs/IMPLEMENTATION.md` for the remaining milestones.
 
-Default production target: a VPS with Docker Compose. Vercel is optional, for the frontend + demo-mode fallback (PRD.md §6).
+Default production target: a VPS with Docker Compose. Vercel is optional, for the frontend + demo-mode fallback (`docs/PRD.md` §6).
 
 ## Layout
 ```
-apps/web/            SvelteKit SSR + BFF — /demo page and /api/v1/chat proxy are real
+docs/                 Everything written to be read, not run — PRD, implementation plan,
+                      deploy runbook, design notes/mockups, seed-corpus sourcing.
+apps/web/             SvelteKit SSR + BFF — /demo page and /api/v1/chat proxy are real
 services/rag/         Python FastAPI: real retriever/cache/citation-validator, mock embedder+generator
 services/worker/      Python: ingestion worker entrypoint (stub — M1)
 database/migrations/  Versioned SQL (0001_init.sql = core schema)
 packages/contracts/   Shared API types — added once more endpoints exist
 infra/                compose.dev.yaml (local Postgres), Caddyfile, .env.example (compose.yaml: Stage 4)
-eval/, docs/, scripts/, .github/workflows/  placeholders for later milestones
+eval/, scripts/, .github/workflows/  placeholders for later milestones
 ```
 
 ## Local dev (real query path, mock provider)
