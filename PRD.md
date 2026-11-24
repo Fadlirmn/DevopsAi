@@ -89,7 +89,11 @@ flowchart TB
 ```
 **Default production environment:** one Ubuntu LTS VPS with Docker Engine + Docker Compose v2, Caddy reverse proxy with automatic TLS, SvelteKit Node adapter, Python FastAPI, dedicated Python worker, PostgreSQL + pgvector, and private object storage. All containers except reverse proxy are reachable only over Docker networks; Postgres is not publicly bound. Optional Redis may be added later for distributed rate limiting/queues, but PostgreSQL-backed leased jobs are sufficient for MVP. DNS A/AAAA records point at VPS; firewall permits SSH from restricted addresses and 80/443 publicly. Container health checks, restart policies, persistent data, off-host backups and provider egress policy are mandatory.
 
-**Alternate showcase mode (nondefault):** Vercel can serve an optional read-only SvelteKit demo against a restricted remote API or bundled fixture data. Do not run the ingestion worker in Vercel. Managed Postgres and object storage can replace self-hosted services without changing application contracts. The VPS is the source of truth for production deployment.
+**Frontend on Vercel + backend on VPS, with automatic demo-mode fallback:** SvelteKit deploys to Vercel (`adapter-vercel`) as the public-facing BFF; server-side code calls the VPS's publicly reachable FastAPI endpoint (behind Caddy) over HTTPS with a shared API key — never from the browser directly, so there's no cross-origin cookie/CORS problem to solve. On `/chat`, the BFF calls the VPS with a short timeout; on timeout or connection failure it serves a bundled fixture Q&A (`fixtures/demo-qa.json`, shipped with the Vercel build — same "example conversation, clearly labeled" pattern as `desain/mockup.html`) instead of erroring, with a visible `Demo mode — live backend unreachable` banner. A visitor never sees a fixture answer presented as a live one. This makes the public demo's *uptime* independent of the VPS; it does **not** make the VPS optional — a down VPS just means visitors silently get the canned fallback instead of real answers until it's back.
+
+Admin routes (`/login`, `/admin/*`) have **no fallback** — they always require the live VPS; there's nothing useful an admin can do against stale fixture data, so a clear error is correct there, not a fake success.
+
+Do not run the ingestion worker on Vercel. Managed Postgres and object storage can replace the VPS's self-hosted services without changing application contracts, but the VPS (or whatever runs FastAPI/Postgres) is still the source of truth — Vercel never originates or stores real data, only relays it or falls back to static fixtures.
 
 **Suggested baseline sizing (planning estimate, benchmark before committing):** 2 vCPU / 4 GB RAM / 40 GB SSD for small curated datasets and API-based LLM/embeddings, with controlled concurrent ingestion; prefer 4 vCPU / 8 GB RAM if serving concurrent users or indexing many PDFs. These are estimates, not guarantees. Provision swap cautiously; monitor memory and disk capacity. Backups must not live solely on VPS disk.
 
@@ -99,7 +103,7 @@ flowchart TB
 ### Service boundaries
 - **Web/BFF:** SvelteKit SSR, session cookie or Firebase ID token verification, public endpoint protections, response streaming.
 - **RAG service:** Python FastAPI as the standard internal API behind the VPS proxy; SvelteKit acts as UI/BFF.
-- **Worker:** Python 3.12+ with PyMuPDF/pdfplumber for text-first PDF parsing, chunker, embedding adapter, queue claim/heartbeat/retry.
+- **Worker:** Python 3.12+ with PyMuPDF/pdfplumber for text-first PDF parsing, chunker, embedding adapter, queue claim/heartbeat/retry. Run it as a **cron/systemd-timer-triggered one-shot** process (wake, claim and drain pending jobs, exit) rather than an always-resident daemon: ingestion is admin-only and infrequent, so an idle resident worker just holds ~100-200MB of Python + parsing libraries in RAM for nothing. The lease/heartbeat/`FOR UPDATE SKIP LOCKED` logic stays identical either way — only how the process is kept alive changes. Revisit a resident daemon only if ingestion volume/concurrency actually needs sub-minute pickup latency.
 - **Data:** Postgres metadata, pgvector embeddings, full-text tsvector. Use one embedding dimension for a given index; dimension must match selected model.
 
 ### Query flow
@@ -163,7 +167,13 @@ CREATE TABLE chunks (
  search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
  UNIQUE(version_id,ordinal)
 );
-CREATE INDEX chunks_embedding_hnsw ON chunks USING hnsw (embedding vector_cosine_ops);
+-- No HNSW index at MVP scale: a curated seed corpus (low thousands of chunks)
+-- scans fast enough exact (`ORDER BY embedding <=> $1`) without one, and exact
+-- search can't miss the true top-k the way an approximate index can — citation
+-- accuracy matters more than ANN speed here. HNSW's graph also costs real RAM,
+-- which is scarce on a 1-2 vCPU/2GB VPS. Add it back only after benchmarking
+-- shows sequential scan is actually too slow for the real corpus size, not on
+-- a guessed chunk-count threshold.
 CREATE INDEX chunks_search_gin ON chunks USING gin(search_vector);
 CREATE TABLE ingestion_jobs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), version_id uuid NOT NULL REFERENCES document_versions(id),
@@ -192,7 +202,7 @@ CREATE TABLE evaluation_runs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), con
  dataset_version text NOT NULL, metrics jsonb, status text NOT NULL, created_at timestamptz DEFAULT now());
 ```
 
-**Important:** never expose raw `chunks` or `documents` tables to anonymous SQL clients; all access is server-side and scoped to permitted collection and active version. Database migration should add triggers or transaction checks so `active_version_id` always belongs to the same document. In production use separate runtime/worker roles, least-privilege privileges, connection pooling and retention jobs.
+**Important:** never expose raw `chunks` or `documents` tables to anonymous SQL clients; all access is server-side and scoped to permitted collection and active version. Database migration should add triggers or transaction checks so `active_version_id` always belongs to the same document. In production use separate runtime/worker roles, least-privilege privileges, and retention jobs. Connection pooling (e.g. PgBouncer) is not needed on the default VPS path — SvelteKit/FastAPI hold a small stable pool each — but becomes necessary if the query path moves to serverless functions (§6 alternate mode), since each invocation opens its own connection and can exhaust `max_connections` fast.
 
 ## 8. API contract (v1)
 Prefix `/api/v1` on SvelteKit endpoints. Uniform error: `{ "error": { "code": "...", "message": "...", "requestId": "..." } }`. Authenticate admin routes with verified Firebase session/ID token; public routes remain limited.
@@ -330,7 +340,7 @@ For private admin collection retrieval use **a different authorized query path**
 - Deployment: protected `main` release workflow requires approval; push images to GHCR; production VPS pulls a **pinned image tag/digest**, applies **backward-compatible database migrations** with backup and dry-run checks, `docker compose up -d` with health checks, smoke test, then record image digests and commit SHA. Prefer SSH deploy user with limited sudo/permissions; GitHub secrets for SSH key, known_hosts pinning, and registry read token. Never expose the Docker socket or SSH key to the public app.
 - Rollback: restore previous app image digests first (expand/contract schema). Database restore is a separate, tested, explicitly approved destructive action, not an automatic rollback side effect.
 - Observability: structured JSON logs, bounded log rotation, `/health/live` and `/health/ready`, external uptime checks, latency/error-rate monitoring, disk/memory/DB storage/queue-depth/worker lag alerts, LLM quotas and spend alarms. Administrative metrics must not be open publicly.
-- Alternate mode: Vercel deploy of read-only showcase is opt-in only; ensure no production secrets in preview and indicate whether data is live vs fixture.
+- Vercel deploy: the SvelteKit BFF, with its shared API key for the VPS as a Vercel env var (never `PUBLIC_`); the build also ships `fixtures/demo-qa.json` for the demo-mode fallback (§6). Deploy previews never get production secrets or the real API key — preview builds run in fixture-only mode.
 
 
 ### Required env vars
@@ -345,7 +355,7 @@ For private admin collection retrieval use **a different authorized query path**
 
 **M3 — Quality (days 14-19):** keyword search + RRF, held-out eval, usage metrics, feedback, rate limit load tests, admin evaluation dashboard. Exit: acceptance gates met or documented deviations.
 
-**M4 — VPS deployment & showcase (days 20-24):** provision hardened VPS, DNS/TLS, build and deploy Compose images, start persistent ingestion worker, configure persistent volumes and off-site backups, monitoring and rollback; optional Vercel preview for read-only fixtures. Exit: 15-minute reviewer flow works without admin credentials.
+**M4 — VPS deployment & showcase (days 20-24):** provision hardened VPS, DNS/TLS, build and deploy Compose images, set up the cron/timer-triggered ingestion worker, configure persistent volumes and off-site backups, monitoring and rollback; deploy the SvelteKit BFF to Vercel pointed at the VPS API, verify the demo-mode fallback actually triggers when the VPS is unreachable. Exit: 15-minute reviewer flow works without admin credentials.
 
 Time estimates are planning targets only. Optimize scope if provider cost or free tiers constrain testing.
 

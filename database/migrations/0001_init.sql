@@ -37,7 +37,9 @@ CREATE TABLE chunks (
  search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
  UNIQUE(version_id,ordinal)
 );
-CREATE INDEX chunks_embedding_hnsw ON chunks USING hnsw (embedding vector_cosine_ops);
+-- No HNSW index at MVP scale — see PRD.md §7. Add it back only after
+-- benchmarking shows exact scan (`ORDER BY embedding <=> $1`) is too slow
+-- for the real corpus size.
 CREATE INDEX chunks_search_gin ON chunks USING gin(search_vector);
 
 CREATE TABLE ingestion_jobs (
