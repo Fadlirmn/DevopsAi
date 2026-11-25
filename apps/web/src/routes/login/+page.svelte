@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Logo from '#lib/Logo.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -72,7 +73,7 @@
 		<header class="top">
 			<a class="back" href="/">← Kembali ke chat</a>
 			<span class="sp"></span>
-			<span class="t">KnowledgeOps AI</span>
+			<span class="t"><Logo size={22} />KnowledgeOps AI</span>
 		</header>
 		<div class="center">
 			<h1>Masuk</h1>

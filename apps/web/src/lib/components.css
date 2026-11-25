@@ -404,3 +404,19 @@
 		display: none;
 	}
 }
+
+/* --- Logo next to the product name --- */
+.chat-app .vbrand,
+.chat-app .top .t {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+}
+.admin-app .brandrow {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.admin-app .brand small {
+	padding-left: 34px;
+}

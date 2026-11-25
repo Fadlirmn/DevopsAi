@@ -2,6 +2,7 @@
 	// Display copied from docs/mockups/admin.html (side nav, brand, icons, copy).
 	import { page } from '$app/state';
 	import Toast from '#lib/Toast.svelte';
+	import Logo from '#lib/Logo.svelte';
 	import { initials } from '#lib/auth-client';
 	import type { LayoutProps } from './$types';
 
@@ -14,7 +15,13 @@
 
 <div class="admin-app">
 	<nav class="side" aria-label="Admin">
-		<div class="brand">Knowledge<span>Ops</span> AI<small>Panel admin</small></div>
+		<div class="brand">
+			<div class="brandrow">
+				<Logo size={24} />
+				<div>Knowledge<span>Ops</span> AI</div>
+			</div>
+			<small>Panel admin</small>
+		</div>
 		<a href="/admin/documents" aria-current={is('/admin/documents')}>
 			<svg viewBox="0 0 24 24">
 				<path d="M8 3h8l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path

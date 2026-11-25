@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import Toast from '#lib/Toast.svelte';
 	import AccountMenu from '#lib/AccountMenu.svelte';
+	import Logo from '#lib/Logo.svelte';
 	import { say, HISTORY_KEY, DEFAULT_COLLECTION_KEY } from '#lib/ui.svelte';
 	import type { PageProps } from './$types';
 
@@ -274,7 +275,7 @@
 			<!-- Signed-out rail: layout from docs/mockups/component/image copy 2.png -->
 			{#if railOpen}
 				<div class="vhead">
-					<span class="vbrand">KnowledgeOps AI</span>
+					<span class="vbrand"><Logo size={24} />KnowledgeOps AI</span>
 					<button
 						id="tog"
 						aria-expanded="true"
@@ -356,8 +357,6 @@
 			<AccountMenu {isAdmin} {adminEmail} {adminName} />
 		{:else if railOpen}
 			<div class="vcard">
-				<b>Kelola knowledge base</b>
-				<p>Khusus admin: masuk untuk mengunggah dokumen, melihat evaluasi, dan mengatur sistem.</p>
 				<a href="/login">Masuk</a>
 			</div>
 		{:else}
@@ -374,14 +373,9 @@
 			<button class="mob" id="menu" aria-label="Buka sidebar" onclick={() => (railOpen = true)}>
 				<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
 			</button>
-			{#if isAdmin || !railOpen}<span class="t">KnowledgeOps AI</span>{/if}
-			{#if collections.length}
-				<select bind:value={collectionSlug} aria-label="Collection" disabled={!!current}>
-					{#each collections as c (c.slug)}
-						<option value={c.slug}>{c.title}</option>
-					{/each}
-				</select>
-			{/if}
+			{#if isAdmin || !railOpen}<span class="t"><Logo size={22} />KnowledgeOps AI</span>{/if}
+			<!-- No collection picker here: the collection comes from
+			     Pengaturan → Umum → Collection default (or the first public one). -->
 			<span class="sp"></span>
 			{#if isAdmin || current}
 				<button id="clear" aria-label="Clear session" onclick={clearSession}>
@@ -405,7 +399,7 @@
 				<div class="col" id="log" aria-live="polite" aria-relevant="additions text">
 					{#if !current}
 						<div class="a" style="color:var(--mute);text-align:center;margin-top:20vh">
-							{#if cleared}Sesi kosong. Pilih collection, lalu tanya.{:else if !collections.length}Belum
+							{#if cleared}Sesi kosong. Tanya apa saja.{:else if !collections.length}Belum
 								ada collection publik.{:else}Chat baru. Tanya apa saja.{/if}
 						</div>
 					{:else}

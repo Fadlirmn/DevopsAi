@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Logo from '#lib/Logo.svelte';
 	// Not drawn in the mockups; built from chat.html's own shell (top bar,
 	// .col column) and source cards (.srcs/.s) so it reads as the same app.
 	import { onMount } from 'svelte';
@@ -37,7 +38,7 @@
 		<header class="top">
 			<a class="back" href="/">← Kembali ke chat</a>
 			<span class="sp"></span>
-			<span class="t">KnowledgeOps AI</span>
+			<span class="t"><Logo size={22} />KnowledgeOps AI</span>
 		</header>
 		<div class="scroll">
 			<div class="col doc">
