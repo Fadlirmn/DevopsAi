@@ -1,0 +1,406 @@
+/* Components from docs/mockups/component/*.png (account menu, settings page),
+   built only from the chat.html tokens so they match the rest of the app.
+   Hand-written; layout.css next to it is generated from the HTML mockups. */
+
+/* --- Account menu (component/image.png) --- */
+.chat-app .menu.acct {
+	padding: 6px;
+}
+.chat-app .rail .menu .me {
+	padding: 8px 10px;
+	gap: 12px;
+}
+.chat-app .me-t {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	line-height: 1.25;
+	min-width: 0;
+}
+.chat-app .me-n {
+	font-size: 15px;
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 160px;
+}
+.chat-app .me-r {
+	font-size: 12.5px;
+	color: var(--mute);
+}
+.chat-app .menu .chev {
+	margin-left: auto;
+	width: 16px;
+	height: 16px;
+	transition: transform 0.15s;
+}
+.chat-app .menu .chev.down {
+	transform: rotate(90deg);
+}
+.chat-app .rail .menu .subi {
+	padding: 6px 10px 6px 40px;
+	font-size: 13.5px;
+	color: var(--mute);
+}
+.chat-app .rail .menu .subi:hover,
+.chat-app .rail .menu .subi:focus-visible {
+	color: var(--text);
+}
+
+/* --- Settings page (component/image copy.png) --- */
+.chat-app .setw {
+	display: flex;
+	width: 100%;
+	height: 100%;
+}
+.chat-app .set-side {
+	width: 300px;
+	flex-shrink: 0;
+	background: var(--side);
+	border-right: 1px solid var(--line);
+	display: flex;
+	flex-direction: column;
+	padding: 14px 10px;
+	overflow: auto;
+}
+.chat-app .set-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 2px 8px 12px;
+}
+.chat-app .set-title {
+	font-size: 18px;
+	font-weight: 600;
+}
+.chat-app .set-x {
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	display: grid;
+	place-items: center;
+	color: var(--mute);
+}
+.chat-app .set-x:hover {
+	background: var(--hover);
+	color: var(--text);
+}
+.chat-app .set-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border: 1px solid var(--line2);
+	border-radius: 99px;
+	padding: 7px 14px;
+	margin: 0 0 6px;
+	color: var(--mute);
+}
+.chat-app .set-search svg {
+	width: 18px;
+	height: 18px;
+}
+.chat-app .set-search input {
+	flex: 1;
+	min-width: 0;
+	background: none;
+	border: 0;
+	outline: 0;
+	color: var(--text);
+	font: 15px var(--font);
+}
+.chat-app .set-search input::placeholder {
+	color: var(--mute);
+}
+.chat-app .set-g {
+	font-size: 14px;
+	color: var(--mute);
+	padding: 16px 10px 6px;
+}
+.chat-app .set-i {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px 10px;
+	border-radius: 10px;
+	color: var(--text);
+	font-size: 15px;
+	text-align: left;
+	text-decoration: none;
+}
+.chat-app .set-i:hover,
+.chat-app .set-i.on {
+	background: var(--hover);
+}
+.chat-app .set-i .grow {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.chat-app .set-i .ext {
+	width: 16px;
+	height: 16px;
+	color: var(--mute);
+}
+.chat-app .av.sm {
+	width: 22px;
+	height: 22px;
+	font-size: 9px;
+}
+.chat-app .set-main {
+	flex: 1;
+	min-width: 0;
+	overflow: auto;
+}
+.chat-app .set-body {
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 40px 24px 64px;
+}
+.chat-app .set-body h1 {
+	margin: 0;
+	font-size: 26px;
+	font-weight: 500;
+}
+.chat-app .set-sub {
+	margin: 2px 0 40px;
+	color: var(--mute);
+	font-size: 17px;
+}
+.chat-app .set-body h2 {
+	margin: 28px 0 14px;
+	font-size: 17px;
+	font-weight: 500;
+}
+.chat-app .set-rows {
+	border-top: 1px solid var(--line2);
+}
+.chat-app .set-rows.gap {
+	margin-top: 48px;
+	border-top: 0;
+}
+.chat-app .set-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 14px 0;
+	border-bottom: 1px solid var(--line);
+}
+.chat-app .set-row:last-child {
+	border-bottom: 0;
+}
+.chat-app .set-row b {
+	display: block;
+	font-weight: 500;
+	font-size: 15px;
+}
+.chat-app .set-row small {
+	display: block;
+	color: var(--mute);
+	font-size: 14.5px;
+	line-height: 1.5;
+}
+.chat-app .set-row > span {
+	text-align: right;
+	overflow-wrap: anywhere;
+}
+.chat-app .set-row select {
+	background: var(--surf);
+	border: 1px solid var(--line2);
+	border-radius: 10px;
+	color: var(--text);
+	padding: 6px 10px;
+	font: 14px var(--font);
+}
+.chat-app .set-danger {
+	background: color-mix(in srgb, #ff9592 16%, transparent);
+	color: #ff9592;
+	border-radius: 99px;
+	padding: 8px 16px;
+	white-space: nowrap;
+}
+:root[data-theme='light'] .chat-app .set-danger {
+	color: #cd2b31;
+	background: color-mix(in srgb, #cd2b31 10%, transparent);
+}
+.chat-app .set-danger:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+@media (max-width: 640px) {
+	.chat-app .setw {
+		flex-direction: column;
+		height: auto;
+		min-height: 100%;
+	}
+	.chat-app .set-side {
+		width: auto;
+		border-right: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.chat-app .set-body {
+		padding: 24px 16px 48px;
+	}
+	.chat-app .set-row {
+		flex-wrap: wrap;
+	}
+}
+
+/* --- Theme switch (moon / sun), used in /settings and /admin/settings ---
+   Scoped like the mockup CSS so it beats the mockups' `button{background:none;border:0}` reset. */
+:is(.chat-app, .admin-app) .tsw {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 64px;
+	height: 32px;
+	padding: 0 9px;
+	flex-shrink: 0;
+	border-radius: 99px;
+	background: var(--surf);
+	border: 1px solid var(--line2);
+	cursor: pointer;
+}
+.tsw .tsw-i {
+	width: 14px;
+	height: 14px;
+	color: var(--mute);
+}
+.tsw .tsw-k {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--acc);
+	color: var(--on-acc, #fff);
+	display: grid;
+	place-items: center;
+	transition: transform 0.2s;
+}
+.tsw[aria-checked='true'] .tsw-k {
+	transform: translateX(32px);
+}
+.tsw .tsw-k svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* --- Signed-out chat (component/image copy 2.png): open rail with brand,
+   login card at the bottom, "Masuk" pill top-right, centered empty state. --- */
+.chat-app .vhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 0 8px 10px;
+}
+.chat-app .vbrand {
+	font-weight: 600;
+	font-size: 17px;
+}
+.chat-app .rail.open .vhead button {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	justify-content: center;
+	border-radius: 8px;
+}
+.chat-app .rail .grow {
+	flex: 1;
+	text-align: left;
+}
+.chat-app .rail .ext {
+	width: 16px;
+	height: 16px;
+	color: var(--mute);
+}
+.chat-app .vcard {
+	margin: 8px -8px -12px;
+	padding: 16px 16px 20px;
+	border-top: 1px solid var(--line);
+}
+.chat-app .vcard b {
+	display: block;
+	font-size: 17px;
+	line-height: 1.3;
+	margin-bottom: 6px;
+}
+.chat-app .vcard p {
+	margin: 0 0 14px;
+	font-size: 13.5px;
+	line-height: 1.45;
+	color: var(--mute);
+}
+.chat-app .vcard a {
+	display: block;
+	text-align: center;
+	background: var(--surf);
+	color: var(--text);
+	text-decoration: none;
+	border-radius: 99px;
+	padding: 10px;
+	font-weight: 500;
+}
+.chat-app .vcard a:hover {
+	filter: brightness(1.15);
+}
+.chat-app .top .login-pill {
+	background: var(--text);
+	color: var(--bg);
+	text-decoration: none;
+	border-radius: 99px;
+	padding: 6px 16px;
+	font-weight: 600;
+	font-size: 14px;
+	white-space: nowrap;
+}
+.chat-app .top .login-pill:hover {
+	opacity: 0.9;
+}
+.chat-app .hero {
+	min-height: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 20px;
+	padding: 0 20px 12vh;
+}
+.chat-app .hero h1 {
+	margin: 0;
+	font-size: 28px;
+	font-weight: 500;
+	text-align: center;
+}
+.chat-app .hero .compwrap {
+	width: 100%;
+	padding: 0;
+}
+.chat-app .hero-chip {
+	border: 1px solid var(--line2);
+	border-radius: 99px;
+	padding: 8px 16px;
+	font-weight: 600;
+	font-size: 14px;
+}
+.chat-app .hero-chip:hover {
+	background: var(--hover);
+}
+.chat-app .rail.open .vi {
+	color: var(--text);
+}
+.chat-app .top .t {
+	white-space: nowrap;
+}
+@media (max-width: 640px) {
+	/* signed-out top bar: brand lives in the sidebar; keep room for the "Masuk" pill */
+	.chat-app .top:has(.login-pill) .t {
+		display: none;
+	}
+}

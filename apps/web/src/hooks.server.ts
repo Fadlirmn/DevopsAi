@@ -11,6 +11,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const identity = token ? await verifyAdminIdToken(token) : null;
 	event.locals.adminUid = identity?.uid ?? null;
 	event.locals.adminEmail = identity?.email ?? null;
+	event.locals.adminName = identity?.name ?? null;
+	event.locals.adminSessionExp = identity?.exp ?? null;
 
 	const path = event.url.pathname;
 	const isAdminApi = path.startsWith('/api/v1/admin/');

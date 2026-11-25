@@ -12,6 +12,7 @@ class ChunkHit:
     content: str
     page_number: int | None
     score: float
+    heading: str | None = None
 
 
 @dataclass

@@ -27,7 +27,7 @@ RAG knowledge system for IT docs/incident runbooks — SvelteKit + FastAPI + Pos
 - `docs/IMPLEMENTATION.md` — staged build and deployment implementation checklist.
 - `docs/DEPLOY_VPS.md` — VPS deployment topology, operations and constraints.
 - `docs/DESIGN.md` — UI design checklist, component list, real-product references.
-- `docs/mockups/` — static HTML design mockups (not application code — see `docs/mockups/README.md`).
+- `docs/mockups/` — static HTML design mockups. The app's UI is a 1:1 copy of `chat.html` (public chat, `/`) and `admin.html` (admin panel, `/admin/*`). `apps/web/src/routes/layout.css` is generated from those two files by `python3 scripts/gen_mockup_css.py`, so change the mockup and re-run the script rather than editing the CSS by hand. Mockup controls that have no backend yet (upload, public API keys, saving settings, feedback, attachments) are shown but answer with a "belum tersedia" toast. They never show fake data. `docs/mockups/component/` (account menu + settings screenshots) is implemented as `src/lib/AccountMenu.svelte` and `/settings`. Both show only real data: the verified Google name/email/UID, session expiry, Firebase project, theme, default collection, and local chat history.
 - `docs/SEED_CORPUS_SOURCES.md` — license-checked real documents used as demo seed data.
 - `infra/.env.example` — sample environment keys (no credentials).
 - `infra/Caddyfile` — HTTPS reverse proxy template, adapt API health/routes.
@@ -48,7 +48,8 @@ services/worker/      Python: ingestion worker entrypoint (stub — M1)
 database/migrations/  Versioned SQL (0001_init.sql = core schema)
 packages/contracts/   Shared API types — added once more endpoints exist
 infra/                compose.yaml (full stack, local + VPS), compose.dev.yaml (Postgres only, for hot-reload dev), Caddyfile, .env.example
-eval/, scripts/, .github/workflows/  placeholders for later milestones
+scripts/              gen_mockup_css.py (mockups -> layout.css)
+eval/, .github/workflows/  placeholders for later milestones
 ```
 
 ## Run everything in Docker (main way — local and VPS)

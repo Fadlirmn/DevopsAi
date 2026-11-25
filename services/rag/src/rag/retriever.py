@@ -10,7 +10,7 @@ from .interfaces import ChunkHit, Embedder
 
 _SQL = """
 SELECT c.id AS chunk_id, d.id AS document_id, d.title AS document_title,
-       c.content, c.page_number,
+       c.content, c.page_number, c.heading,
        1 - (c.embedding <=> $1::vector) AS similarity
 FROM chunks c
 JOIN document_versions v ON v.id = c.version_id
@@ -45,6 +45,7 @@ class PgRetriever:
                 content=r["content"],
                 page_number=r["page_number"],
                 score=float(r["similarity"]),
+                heading=r["heading"],
             )
             for r in rows
         ]

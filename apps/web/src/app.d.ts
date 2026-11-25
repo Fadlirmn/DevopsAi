@@ -6,6 +6,8 @@ declare global {
 		interface Locals {
 			adminUid: string | null;
 			adminEmail: string | null;
+			adminName: string | null;
+			adminSessionExp: number | null;
 		}
 		// interface PageData {}
 		// interface PageState {}

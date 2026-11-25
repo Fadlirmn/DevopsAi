@@ -1,4 +1,6 @@
 <script lang="ts">
+	// Not drawn in the mockups; built from chat.html's own shell (top bar,
+	// .col column) and source cards (.srcs/.s) so it reads as the same app.
 	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
@@ -23,29 +25,41 @@
 	let highlightChunk = $derived(data.highlightChunk as string);
 
 	onMount(() => {
-		if (!highlightChunk) return;
-		document.getElementById(`chunk-${highlightChunk}`)?.scrollIntoView({ block: 'center' });
+		if (highlightChunk)
+			document.getElementById(`chunk-${highlightChunk}`)?.scrollIntoView({ block: 'center' });
 	});
 </script>
 
-<div class="eyebrow">Public</div>
-<h1>{source.title}</h1>
-<div style="display: flex; gap: 16px; color: var(--fg-muted); font-size: 12.5px; margin: 8px 0 20px;">
-	<span>Collection: {source.collectionTitle}</span>
-	<span class="mono">v{source.versionNumber}</span>
-</div>
+<svelte:head><title>{source.title} — KnowledgeOps AI</title></svelte:head>
 
-{#each source.chunks as chunk (chunk.chunkId)}
-	<div
-		class="source-card"
-		class:flash={highlightChunk === chunk.chunkId}
-		id={`chunk-${chunk.chunkId}`}
-	>
-		<div class="source-card-head">
-			<span class="source-card-num">#{chunk.ordinal}</span>
-			<span class="source-card-title">{chunk.heading ?? 'Untitled section'}</span>
+<div class="chat-app">
+	<div class="main">
+		<header class="top">
+			<a class="back" href="/">← Kembali ke chat</a>
+			<span class="sp"></span>
+			<span class="t">KnowledgeOps AI</span>
+		</header>
+		<div class="scroll">
+			<div class="col doc">
+				<div>
+					<h1>{source.title}</h1>
+					<p class="sub">{source.collectionTitle} · v{source.versionNumber}</p>
+					<div class="srcs">
+						{#each source.chunks as chunk (chunk.chunkId)}
+							<div
+								class="s"
+								class:on={highlightChunk === chunk.chunkId}
+								id={`chunk-${chunk.chunkId}`}
+							>
+								<b>{chunk.heading ?? `Bagian ${chunk.ordinal}`}</b><small>
+									#{chunk.ordinal}{chunk.page ? ` · hal. ${chunk.page}` : ''}
+								</small>
+								<div>{chunk.content}</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
 		</div>
-		<div class="source-card-meta">{chunk.page ? `Page ${chunk.page}` : ''}</div>
-		<p style="font-size: 13px; margin: 0;">{chunk.content}</p>
 	</div>
-{/each}
+</div>

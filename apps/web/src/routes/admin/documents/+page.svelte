@@ -1,4 +1,8 @@
 <script lang="ts">
+	// Display copied from docs/mockups/admin.html "Dokumen"; rows are real
+	// (/api/v1/admin/documents). Upload and the publish toggle need the ingestion
+	// worker + write endpoints (not built yet); they say so instead of faking it.
+	import { say } from '#lib/ui.svelte';
 	import type { PageProps } from './$types';
 
 	type Doc = {
@@ -10,108 +14,72 @@
 		versionNumber: number | null;
 		versionStatus: string | null;
 		errorCode: string | null;
+		updatedAt: string;
 	};
 
 	let { data }: PageProps = $props();
 	let documents = $derived(data.documents as Doc[]);
-	let dragging = $state(false);
-	let toast = $state('');
 
-	function badgeClass(status: string | null) {
-		if (status === 'published' || status === 'ready') return 'badge-good';
-		if (status === 'failed' || status === 'dead') return 'badge-bad';
-		if (status === 'processing' || status === 'pending' || status === 'queued' || status === 'running')
-			return 'badge-warn';
-		return 'badge-neutral';
+	function ingestion(s: string | null): { cls: string; text: string } {
+		if (s === 'ready') return { cls: 'ok', text: 'succeeded' };
+		if (s === 'failed') return { cls: 'er', text: 'failed' };
+		if (s === 'pending' || s === 'processing') return { cls: 'wn', text: 'running' };
+		return { cls: 'wn', text: 'belum ada versi' };
 	}
 
-	function notWired() {
-		toast = 'Upload/ingestion isn\'t wired up yet — the worker is still a stub (see docs/IMPLEMENTATION.md, milestone M1).';
-		setTimeout(() => (toast = ''), 3500);
+	function when(iso: string): string {
+		const t = new Date(iso).getTime();
+		const start = new Date(new Date().toDateString()).getTime();
+		if (t >= start) return 'Hari ini';
+		if (t >= start - 86_400_000) return 'Kemarin';
+		return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 	}
 </script>
 
-<div class="eyebrow">Admin</div>
-<h1>Documents</h1>
-<p style="color: var(--fg-muted); margin: 8px 0 20px;">
-	Upload, ingestion status, and publish/archive controls.
-</p>
-
-<div
-	class="dropzone"
-	class:drag={dragging}
-	role="button"
-	tabindex="0"
-	ondragover={(e) => {
-		e.preventDefault();
-		dragging = true;
-	}}
-	ondragleave={() => (dragging = false)}
-	ondrop={(e) => {
-		e.preventDefault();
-		dragging = false;
-		notWired();
-	}}
-	onclick={notWired}
-	onkeydown={(e) => e.key === 'Enter' && notWired()}
->
-	<strong>Drop a PDF, Markdown or TXT file here</strong><br />to start ingestion, or click to browse.
-</div>
-
-{#if toast}
-	<p style="font-size: 12.5px; color: var(--fg-muted); margin-bottom: 16px;">{toast}</p>
-{/if}
-
-{#if documents.length === 0}
-	<p style="color: var(--fg-muted);">No documents yet.</p>
-{:else}
-	<div class="table-wrap">
+<section class="pg" id="p-dokumen">
+	<h1>Dokumen</h1>
+	<p class="sub">Upload, versi, status ingestion, dan visibilitas.</p>
+	<button
+		class="drop"
+		id="drop"
+		onclick={() => say('Upload belum tersedia — worker ingestion belum dibangun')}
+	>
+		<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" /></svg><b
+			style="color:var(--text)"
+		>
+			Seret file ke sini atau klik
+		</b><span>PDF, MD, TXT · maks 20 MB</span>
+	</button>
+	<h2>Daftar dokumen</h2>
+	<div class="tw">
 		<table>
 			<thead>
-				<tr>
-					<th>Document</th>
-					<th>Collection</th>
-					<th>Visibility</th>
-					<th>Version</th>
-					<th>Status</th>
-				</tr>
+				<tr><th>Nama</th><th>Versi</th><th>Ingestion</th><th>Publik</th><th>Diperbarui</th></tr>
 			</thead>
 			<tbody>
-				{#each documents as doc (doc.id)}
+				{#each documents as d (d.id)}
+					{@const ing = ingestion(d.versionStatus)}
 					<tr>
-						<td>{doc.title}</td>
-						<td>{doc.collectionTitle}</td>
+						<td>{d.title}</td>
+						<td class="n">{d.versionNumber ? `v${d.versionNumber}` : '—'}</td>
+						<td><span class={`badge ${ing.cls}`}>{ing.text}</span></td>
 						<td>
-							<span class={`badge ${doc.visibility === 'public' ? 'badge-neutral' : 'badge-warn'}`}
-								><span class="dot"></span>{doc.visibility}</span
-							>
+							<button
+								class="sw"
+								role="switch"
+								aria-checked={d.visibility === 'public' && d.docStatus === 'published'}
+								aria-label={`Publik ${d.title}`}
+								onclick={() => say('Ubah visibilitas belum tersedia')}
+							></button>
 						</td>
-						<td class="mono">{doc.versionNumber ?? '—'}</td>
-						<td>
-							<span class={`badge ${badgeClass(doc.docStatus)}`}
-								><span class="dot"></span>{doc.docStatus}</span
-							>
-							{#if doc.versionStatus && doc.versionStatus !== doc.docStatus}
-								<span class={`badge ${badgeClass(doc.versionStatus)}`} style="margin-left: 4px;"
-									><span class="dot"></span>{doc.versionStatus}</span
-								>
-							{/if}
-						</td>
+						<td>{when(d.updatedAt)}</td>
 					</tr>
+				{:else}
+					<tr><td colspan="5" class="empty">Belum ada dokumen.</td></tr>
 				{/each}
 			</tbody>
 		</table>
 	</div>
-{/if}
-
-<div style="display: flex; gap: 8px; margin-top: 16px;">
-	<button class="btn" disabled title="Not implemented yet — see docs/IMPLEMENTATION.md M1">
-		Publish
-	</button>
-	<button class="btn" disabled title="Not implemented yet — see docs/IMPLEMENTATION.md M1">
-		Archive
-	</button>
-	<button class="btn" disabled title="Not implemented yet — see docs/IMPLEMENTATION.md M1">
-		Retry job
-	</button>
-</div>
+	<h2>Timeline ingestion</h2>
+	<ul class="tl"><li class="run">Belum ada job ingestion — worker belum aktif.</li></ul>
+</section>

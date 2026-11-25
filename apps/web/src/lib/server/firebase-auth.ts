@@ -24,7 +24,13 @@ function getJwks() {
 	return jwks;
 }
 
-export type AdminIdentity = { uid: string; email: string | null };
+export type AdminIdentity = {
+	uid: string;
+	email: string | null;
+	name: string | null;
+	/** token expiry, epoch seconds */
+	exp: number | null;
+};
 
 export async function verifyAdminIdToken(idToken: string): Promise<AdminIdentity | null> {
 	const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -47,7 +53,12 @@ export async function verifyAdminIdToken(idToken: string): Promise<AdminIdentity
 		const uid = payload.sub;
 		if (!uid || !adminUids.includes(uid)) return null;
 
-		return { uid, email: (payload.email as string | undefined) ?? null };
+		return {
+			uid,
+			email: (payload.email as string | undefined) ?? null,
+			name: (payload.name as string | undefined) ?? null,
+			exp: payload.exp ?? null
+		};
 	} catch {
 		return null;
 	}

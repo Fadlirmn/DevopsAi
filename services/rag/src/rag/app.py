@@ -22,7 +22,7 @@ from .citations import validate_citations
 from .db import get_pool
 from .interfaces import ChunkHit
 from .mock_embedder import MockEmbedder
-from .mock_generator import MockGenerator
+from .mock_generator import MIN_SIMILARITY, MockGenerator
 from .retriever import PgRetriever
 
 PIPELINE_VERSION = os.environ.get("PIPELINE_VERSION", "dev-mock-v1")
@@ -49,6 +49,7 @@ class Citation(BaseModel):
     title: str
     page: int | None
     excerpt: str
+    heading: str | None = None  # section heading; absent in answers cached before it existed
 
 
 class Usage(BaseModel):
@@ -97,7 +98,8 @@ async def list_admin_documents() -> list[dict]:
         """
         SELECT d.id, d.title, d.status AS doc_status,
                col.title AS collection_title, col.visibility,
-               v.version_number, v.status AS version_status, v.error_code
+               v.version_number, v.status AS version_status, v.error_code,
+               COALESCE(v.created_at, d.created_at) AS updated_at
         FROM documents d
         JOIN collections col ON col.id = d.collection_id
         LEFT JOIN document_versions v ON v.id = d.active_version_id
@@ -114,6 +116,7 @@ async def list_admin_documents() -> list[dict]:
             "versionNumber": r["version_number"],
             "versionStatus": r["version_status"],
             "errorCode": r["error_code"],
+            "updatedAt": r["updated_at"].isoformat(),
         }
         for r in rows
     ]
@@ -182,6 +185,7 @@ async def get_settings() -> dict:
         "embedder": type(_embedder).__name__,
         "generator": type(_generator).__name__,
         "retrievalTopK": RETRIEVAL_TOP_K,
+        "similarityThreshold": MIN_SIMILARITY,
         "healthChecks": [
             {"name": "Postgres", "status": "connected" if db_ok else "unreachable"},
             {"name": "LLM provider", "status": "not configured (mock mode)"},
@@ -247,6 +251,7 @@ def _build_citations(cited_chunk_ids: list[str], hits: list[ChunkHit]) -> list[C
                 title=hit.document_title,
                 page=hit.page_number,
                 excerpt=hit.content[:280],
+                heading=hit.heading,
             )
         )
     return out

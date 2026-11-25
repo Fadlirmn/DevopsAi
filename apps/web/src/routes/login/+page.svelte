@@ -23,15 +23,15 @@
 			body: JSON.stringify({ idToken })
 		});
 		if (res.ok) {
-			// invalidateAll so the root layout re-reads isAdmin and shows the Admin menu.
-			await goto(nextPath(), { invalidateAll: true });
+			// refreshAll so the root layout re-reads isAdmin and shows the Admin menu.
+			await goto(nextPath(), { refreshAll: true });
 			return;
 		}
 		if (res.status === 403) {
-			errorMsg = "This Google account isn't an allowlisted admin.";
+			errorMsg = 'Akun Google ini bukan admin terdaftar.';
 			await signOut(getFirebaseAuth());
 		} else {
-			errorMsg = 'Could not establish a session — try again.';
+			errorMsg = 'Gagal membuat sesi — coba lagi.';
 		}
 		status = 'error';
 	}
@@ -58,33 +58,43 @@
 			const cred = await signInWithPopup(getFirebaseAuth(), googleProvider);
 			await establishSession(await cred.user.getIdToken());
 		} catch (e) {
-			errorMsg = e instanceof Error ? e.message : 'Sign-in failed.';
+			errorMsg = e instanceof Error ? e.message : 'Gagal masuk.';
 			status = 'error';
 		}
 	}
 </script>
 
-<div class="eyebrow">Admin</div>
-<h1>Admin login</h1>
-<p style="color: var(--fg-muted); margin: 8px 0 20px; max-width: 48ch;">
-	Access is limited to one allowlisted Firebase account. Public visitors don't need to sign in —
-	the <a href="/">chat</a> is open already.
-</p>
+<svelte:head><title>Masuk — KnowledgeOps AI</title></svelte:head>
 
-<div class="card" style="max-width: 360px;">
-	<button class="gsignin" type="button" onclick={signIn} disabled={status === 'signing-in'}>
-		<svg width="16" height="16" viewBox="0 0 48 48">
-			<path
-				fill="#4285F4"
-				d="M44.5 20H24v8.5h11.8C34.6 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.3l6-6C34.8 4.1 29.7 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.1-2.7-.5-4z"
-			/>
-		</svg>
-		{status === 'signing-in' ? 'Signing in…' : 'Sign in with Google'}
-	</button>
-	{#if errorMsg}
-		<p style="font-size: 12.5px; color: var(--bad); margin-top: 12px;">{errorMsg}</p>
-	{/if}
-	<p style="font-size: 11.5px; color: var(--fg-muted); margin-top: 12px;">
-		No signup flow — an unlisted account is rejected server-side with 403.
-	</p>
+<!-- Not drawn in the mockups; built from chat.html's tokens and controls. -->
+<div class="chat-app">
+	<div class="main">
+		<header class="top">
+			<a class="back" href="/">← Kembali ke chat</a>
+			<span class="sp"></span>
+			<span class="t">KnowledgeOps AI</span>
+		</header>
+		<div class="center">
+			<h1>Masuk</h1>
+			<p>
+				Hanya untuk akun Firebase yang terdaftar sebagai admin. Pengunjung tidak perlu masuk —
+				<a href="/" style="color: var(--acc-txt);">chat</a> sudah terbuka untuk umum.
+			</p>
+			<button class="pill" type="button" onclick={signIn} disabled={status === 'signing-in'}>
+				<svg width="18" height="18" viewBox="0 0 48 48" style="stroke:none">
+					<path
+						fill="#4285F4"
+						d="M44.5 20H24v8.5h11.8C34.6 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.3 0 6.3 1.2 8.6 3.3l6-6C34.8 4.1 29.7 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.1-2.7-.5-4z"
+					/>
+				</svg>
+				{status === 'signing-in' ? 'Masuk…' : 'Masuk dengan Google'}
+			</button>
+			{#if errorMsg}
+				<div class="err" role="alert"><span>{errorMsg}</span></div>
+			{/if}
+			<p style="font-size: 12px;">
+				Tidak ada pendaftaran — akun yang tidak terdaftar ditolak server (403).
+			</p>
+		</div>
+	</div>
 </div>
