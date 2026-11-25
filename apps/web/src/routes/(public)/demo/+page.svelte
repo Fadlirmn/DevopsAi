@@ -44,9 +44,11 @@
 					clientRequestId: crypto.randomUUID()
 				})
 			});
-			const data = await res.json();
+			const data = (await res.json()) as ChatResult & { detail?: unknown; message?: string };
 			if (!res.ok) {
-				errorMsg = data?.detail ?? `Request failed (${res.status}).`;
+				// FastAPI's 422 `detail` is an array, SvelteKit's error() uses `message`.
+				const detail = typeof data.detail === 'string' ? data.detail : null;
+				errorMsg = detail ?? data.message ?? `Request failed (${res.status}).`;
 			} else {
 				result = data;
 			}

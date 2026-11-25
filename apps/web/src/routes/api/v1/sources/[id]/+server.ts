@@ -1,17 +1,15 @@
 // Public /sources/:id detail view. Proxies server-to-server to the RAG
 // service, which enforces public visibility itself (PRD.md §5).
-import { json, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { proxyToRag } from '#lib/server/rag';
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL ?? 'http://localhost:8000';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const GET: RequestHandler = async ({ params }) => {
-	let upstream: Response;
-	try {
-		upstream = await fetch(`${RAG_SERVICE_URL}/sources/${params.id}`);
-	} catch {
-		throw error(503, 'rag service unavailable');
-	}
-	const data = await upstream.json();
-	return json(data, { status: upstream.status });
+export const GET: RequestHandler = ({ params }) => {
+	// Must validate before building the upstream URL: params are decoded, so
+	// `..%2Fadmin%2Fdocuments` would arrive as `../admin/documents` and fetch()
+	// would normalize it onto the unauthenticated RAG /admin/* routes.
+	if (!UUID_RE.test(params.id)) throw error(404, 'source not found');
+	return proxyToRag(`/sources/${encodeURIComponent(params.id)}`);
 };

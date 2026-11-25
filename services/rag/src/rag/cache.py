@@ -22,21 +22,20 @@ def cache_key(question: str, collection_id: str, fingerprint: str, pipeline_vers
 
 
 async def collection_fingerprint(collection_id: str) -> str:
-    """Changes whenever the collection's published version set changes, so a
-    stale cache entry simply misses after a republish instead of needing an
-    explicit purge."""
+    """Changes whenever the collection's set of (published document, active
+    version) pairs changes — republish, unpublish/archive, or rollback to an
+    older version — so a stale cache entry simply misses instead of needing
+    an explicit purge. (max(created_at) alone missed unpublish and rollback.)"""
     pool = await get_pool()
-    row = await pool.fetchrow(
+    fingerprint = await pool.fetchval(
         """
-        SELECT max(v.created_at) AS latest
-        FROM document_versions v
-        JOIN documents d ON d.active_version_id = v.id
-        WHERE d.collection_id = $1
+        SELECT md5(string_agg(d.id::text || ':' || d.active_version_id::text, ',' ORDER BY d.id))
+        FROM documents d
+        WHERE d.collection_id = $1 AND d.status = 'published' AND d.active_version_id IS NOT NULL
         """,
         collection_id,
     )
-    latest = row["latest"] if row else None
-    return latest.isoformat() if latest else "empty"
+    return fingerprint or "empty"
 
 
 async def get_cached(key: str) -> dict | None:

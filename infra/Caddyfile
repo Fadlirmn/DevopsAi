@@ -6,11 +6,8 @@
       Referrer-Policy strict-origin-when-cross-origin
       X-Frame-Options DENY
     }
-    @api path /api/* /health/*
-    handle @api {
-        reverse_proxy api:8000
-    }
-    handle {
-        reverse_proxy web:3000
-    }
+    # Everything goes through the SvelteKit BFF (it owns /api/v1/* and the
+    # admin auth check). The FastAPI RAG service must NOT be routed here: it
+    # has no auth of its own and is only reachable on the internal network.
+    reverse_proxy web:3000
 }

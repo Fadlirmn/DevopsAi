@@ -9,7 +9,11 @@
 	let errorMsg = $state('');
 
 	function nextPath(): string {
-		return page.url.searchParams.get('next') || '/admin/documents';
+		// Same-origin paths only — goto() throws on external URLs (`//x`, `https://x`).
+		const next = page.url.searchParams.get('next');
+		return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')
+			? next
+			: '/admin/documents';
 	}
 
 	async function establishSession(idToken: string) {
