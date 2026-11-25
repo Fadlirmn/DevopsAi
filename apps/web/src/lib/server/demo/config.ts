@@ -24,8 +24,8 @@ const KNOWN_PRICES: Record<string, [number, number]> = {
 export type DemoConfig = {
 	provider: Provider;
 	model: string;
-	/** Tried once when the primary model is overloaded (503/429/529). */
-	fallbackModel: string | undefined;
+	/** Tried in order when the primary model is overloaded or not found (LLM_FALLBACK_MODEL, comma-separated). */
+	fallbackModels: string[];
 	apiKey: string | undefined;
 	baseUrl: string | undefined;
 	effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -39,6 +39,12 @@ export type DemoConfig = {
 	minScore: number;
 };
 
+/** Model IDs never end in punctuation: forgive "gemini-3.6-flash." or stray spaces from copy-paste. */
+function cleanModel(v: string | undefined): string | undefined {
+	const m = v?.trim().replace(/[.,;:\s]+$/, '');
+	return m || undefined;
+}
+
 let cached: DemoConfig | null | undefined;
 
 /** null when LLM_PROVIDER is unset/mock — the serverless demo is then off. */
@@ -47,7 +53,8 @@ export function demoConfig(): DemoConfig | null {
 	const provider = (env('LLM_PROVIDER') ?? 'mock').toLowerCase();
 	if (!PROVIDERS.has(provider as Provider)) return (cached = null);
 
-	const model = env('LLM_MODEL') ?? (provider === 'anthropic' ? 'claude-opus-5-5' : undefined);
+	const model =
+		cleanModel(env('LLM_MODEL')) ?? (provider === 'anthropic' ? 'claude-opus-5-5' : undefined);
 	if (!model) throw new Error(`LLM_MODEL wajib diisi untuk LLM_PROVIDER=${provider}`);
 	const apiKey = env('LLM_API_KEY');
 	if (provider !== 'openai-compatible' && !apiKey)
@@ -60,7 +67,10 @@ export function demoConfig(): DemoConfig | null {
 	cached = {
 		provider: provider as Provider,
 		model,
-		fallbackModel: env('LLM_FALLBACK_MODEL'),
+		fallbackModels: (env('LLM_FALLBACK_MODEL') ?? '')
+			.split(',')
+			.map((m) => cleanModel(m))
+			.filter((m): m is string => Boolean(m) && m !== model),
 		apiKey,
 		baseUrl,
 		effort: (env('LLM_EFFORT') ?? 'low') as DemoConfig['effort'],

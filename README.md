@@ -237,7 +237,7 @@ Prompt, aturan kutipan, dan teks penolakannya sama persis dengan VPS. API key ha
 | `LLM_API_KEY` | kunci provider | ✅ (kecuali openai-compatible lokal) |
 | `LLM_MODEL` | default Claude `claude-opus-5-5`; provider lain wajib diisi | sesuai provider |
 | `LLM_BASE_URL` | untuk openai-compatible (Groq, OpenRouter, …) | sesuai provider |
-| `LLM_FALLBACK_MODEL` | mis. `gemini-3.6-flash` | disarankan: dipakai sekali kalau model utama overload (503/429) setelah retry otomatis |
+| `LLM_FALLBACK_MODEL` | mis. `gemini-3.6-flash` (boleh beberapa, pisahkan koma) | opsional: dicoba berurutan kalau model utama overload/tidak ditemukan. Spasi/titik di akhir dibuang otomatis |
 | `DAILY_SPEND_CAP_USD` | `1` | sangat disarankan untuk demo publik |
 | `RATE_LIMIT_PER_MINUTE` / `RATE_LIMIT_PER_DAY` | `10` / `100` (default) | – |
 | `DEMO_FALLBACK` | `1` | disarankan: kalau provider bermasalah, tetap ada jawaban contoh |
@@ -245,7 +245,13 @@ Prompt, aturan kutipan, dan teks penolakannya sama persis dengan VPS. API key ha
 
 4. **Deploy.** Fungsi chat diberi `maxDuration: 60` detik, karena ada 2 panggilan AI per pertanyaan baru.
 
-**Kalau provider overload** (mis. Gemini 503 "high demand"): SDK mencoba ulang otomatis (±1 s, 2 s), lalu `LLM_FALLBACK_MODEL` dicoba sekali, lalu, kalau `DEMO_FALLBACK=1`, jawaban contoh berbanner tampil. Error baru muncul kalau semuanya tidak tersedia.
+**Kalau provider overload** (mis. Gemini 503 "high demand") atau model tidak ditemukan, urutannya:
+1. SDK mencoba ulang otomatis (±1 s, 2 s).
+2. Model di `LLM_FALLBACK_MODEL` dicoba berurutan.
+3. **Khusus Gemini:** aplikasi menanyakan daftar model yang tersedia untuk key-mu, lalu mencoba sampai 2 model **Flash** (kelas menengah: bukan Pro, bukan Lite, bukan preview/gambar/audio/TTS) dengan versi terbaru dulu. Tanpa mengisi apa pun.
+4. Kalau `DEMO_FALLBACK=1`, jawaban contoh berbanner tampil. Error baru muncul kalau semuanya gagal.
+
+Model yang baru overload dilewati selama 60 detik, dan model yang terakhir berhasil dicoba lebih dulu, jadi pengunjung berikutnya tidak ikut menunggu retry.
 
 Mode 2 tidak butuh API embedding, jadi Claude saja sudah cukup. Biaya per pertanyaan baru = 2 panggilan AI kecil; pertanyaan berulang diambil dari cache (gratis). Tanpa Upstash, rate limit dan batas biaya hanya per instance dan lebih mudah ditembus (ada peringatan di log). Untuk demo publik, pakai Upstash dan pasang juga batas pengeluaran di dashboard provider.
 

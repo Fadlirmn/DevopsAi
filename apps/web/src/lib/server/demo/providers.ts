@@ -143,7 +143,8 @@ async function viaGemini(
 		apiKey: c.apiKey,
 		httpOptions: {
 			timeout: c.timeoutMs,
-			retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 }
+			retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 },
+			...(c.baseUrl ? { baseUrl: c.baseUrl } : {}) // optional proxy
 		}
 	});
 	try {
@@ -172,7 +173,10 @@ async function viaGemini(
 		if (e instanceof ProviderError) throw e;
 		const status = e instanceof ApiError ? e.status : 0;
 		const msg = e instanceof Error ? e.message : String(e);
-		throw new ProviderError(status === 429 || status >= 500 ? 'overloaded' : 'upstream', msg);
+		throw new ProviderError(
+			status === 429 || status >= 500 ? 'overloaded' : status === 404 ? 'not_found' : 'upstream',
+			msg
+		);
 	}
 }
 
@@ -182,19 +186,106 @@ function once(c: DemoConfig, system: string, user: string, json: boolean): Promi
 	return viaOpenAI(c, system, user, json);
 }
 
-/** The SDKs retry transient errors themselves; if the model is still
- * overloaded after that, try LLM_FALLBACK_MODEL once. */
+let discovered: Promise<string[]> | null = null;
+
+/**
+ * Gemini only: the "Flash" (mid-tier) text models this API key can call,
+ * newest first. Excludes Pro/Lite and preview/image/audio/TTS/live variants.
+ * Looked up once per instance, only when every configured model failed.
+ */
+function discoverGeminiFlash(c: DemoConfig): Promise<string[]> {
+	discovered ??= (async () => {
+		gemini ??= new GoogleGenAI({ apiKey: c.apiKey, httpOptions: { timeout: c.timeoutMs } });
+		const names: string[] = [];
+		for await (const m of await gemini.models.list({ config: { pageSize: 100 } })) {
+			const id = (m.name ?? '').replace(/^models\//, '');
+			if (
+				m.supportedActions?.includes('generateContent') &&
+				/^gemini-[\d.]+-flash$/.test(id) // exactly "gemini-<version>-flash"
+			)
+				names.push(id);
+		}
+		const version = (id: string) =>
+			id
+				.match(/[\d.]+/)?.[0]
+				.split('.')
+				.map(Number) ?? [0];
+		return names.sort((a, b) => {
+			const [va, vb] = [version(a), version(b)];
+			for (let i = 0; i < Math.max(va.length, vb.length); i++)
+				if ((vb[i] ?? 0) !== (va[i] ?? 0)) return (vb[i] ?? 0) - (va[i] ?? 0);
+			return 0;
+		});
+	})().catch((e: unknown) => {
+		discovered = null; // retry the lookup next time
+		console.warn('[demo] model discovery failed:', e instanceof Error ? e.message : e);
+		return [];
+	});
+	return discovered;
+}
+
+/**
+ * The SDKs retry transient errors themselves. If the model is still
+ * overloaded (or doesn't exist), walk the fallbacks: LLM_FALLBACK_MODEL in
+ * order, then — Gemini only — up to two discovered Flash models.
+ */
+// Circuit breaker (per instance): a model that just failed as overloaded or
+// missing is skipped for a minute, and the last model that worked is tried
+// first, so step 2 of a question — and the next visitors — don't pay the
+// retry delays again.
+const COOL_DOWN_MS = 60_000;
+const sickUntil = new Map<string, number>();
+let lastGood: string | null = null;
+
 export async function complete(
 	c: DemoConfig,
 	system: string,
 	user: string,
 	json: boolean
 ): Promise<Completion> {
-	try {
-		return await once(c, system, user, json);
-	} catch (e) {
-		if (!(e instanceof ProviderError) || e.reason !== 'overloaded' || !c.fallbackModel) throw e;
-		console.warn(`[demo] ${c.model} overloaded, trying ${c.fallbackModel}`);
-		return once({ ...c, model: c.fallbackModel }, system, user, json);
+	const tried: string[] = [];
+	let lastError: unknown;
+	const attempt = async (model: string, force = false): Promise<Completion | null> => {
+		if (tried.includes(model)) return null;
+		if (!force && (sickUntil.get(model) ?? 0) > Date.now()) return null;
+		tried.push(model);
+		try {
+			const r = await once({ ...c, model }, system, user, json);
+			sickUntil.delete(model);
+			lastGood = model;
+			return r;
+		} catch (e) {
+			if (!(e instanceof ProviderError) || (e.reason !== 'overloaded' && e.reason !== 'not_found'))
+				throw e;
+			console.warn(`[demo] ${model} ${e.reason}, trying next model`);
+			sickUntil.set(
+				model,
+				Date.now() + (e.reason === 'not_found' ? 10 * COOL_DOWN_MS : COOL_DOWN_MS)
+			);
+			lastError = e;
+			return null;
+		}
+	};
+
+	const configured = [c.model, ...c.fallbackModels];
+	const order = lastGood && lastGood !== c.model ? [lastGood, ...configured] : configured;
+	for (const model of order) {
+		const r = await attempt(model);
+		if (r) return r;
 	}
+	if (c.provider === 'gemini') {
+		let extra = 0;
+		for (const model of await discoverGeminiFlash(c)) {
+			if (tried.includes(model) || (sickUntil.get(model) ?? 0) > Date.now()) continue;
+			if (extra++ >= 2) break;
+			const r = await attempt(model);
+			if (r) return r;
+		}
+	}
+	// Everything is cooling down: give the primary one real try rather than none.
+	if (!tried.length) {
+		const r = await attempt(c.model, true);
+		if (r) return r;
+	}
+	throw lastError;
 }
