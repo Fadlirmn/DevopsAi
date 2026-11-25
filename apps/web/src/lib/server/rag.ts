@@ -9,7 +9,9 @@
 //   x-rate-exempt   "1" for a verified admin session (hooks.server.ts)
 import { json, error, type RequestEvent } from '@sveltejs/kit';
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL ?? 'http://localhost:8000';
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
+/** False on a Vercel-only demo (no VPS): /chat and /collections then use the serverless demo. */
+export const RAG_CONFIGURED = Boolean(process.env.RAG_SERVICE_URL);
 const RAG_API_KEY = process.env.RAG_API_KEY ?? '';
 const TIMEOUT_MS = 30_000;
 

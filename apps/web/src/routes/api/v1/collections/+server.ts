@@ -1,15 +1,26 @@
-// Public /collections per PRD.md §8. Proxies server-to-server to the RAG service.
-// Vercel demo mode: if the VPS is unreachable, list the demo collection so the
-// chat still renders (answers then come from the labelled fixture).
+// Public /collections per PRD.md §8. From the VPS RAG service when it is
+// configured and up; otherwise the single demo collection (serverless demo or
+// stored example) so the chat still renders.
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { fetchRag, toResponse, DEMO_FALLBACK } from '#lib/server/rag';
+import { fetchRag, toResponse, DEMO_FALLBACK, RAG_CONFIGURED } from '#lib/server/rag';
 import { DEMO_COLLECTION } from '#lib/server/demo-fixture';
+import { serverlessDemoEnabled } from '#lib/server/demo/chat';
 
 export const GET: RequestHandler = async (event) => {
-	// Short timeout in demo mode: this runs on page load, a hanging VPS must not stall it.
-	const r = await fetchRag(event, '/collections', {}, DEMO_FALLBACK ? 3_000 : 8_000);
-	if (r && r.status < 500) return toResponse(r);
+	const hasFallback = DEMO_FALLBACK || serverlessDemoEnabled();
+	if (RAG_CONFIGURED) {
+		// Runs on page load: with a fallback available a hanging VPS must not stall it.
+		const r = await fetchRag(event, '/collections', {}, hasFallback ? 3_000 : 8_000);
+		if (r && r.status < 500) return toResponse(r);
+	}
+	if (serverlessDemoEnabled())
+		return json([
+			{
+				...DEMO_COLLECTION,
+				description: 'Demo: NIST SP 800-61 Rev. 2 (Computer Security Incident Handling Guide).'
+			}
+		]);
 	if (DEMO_FALLBACK) return json([DEMO_COLLECTION]);
 	throw error(503, 'rag service unavailable');
 };

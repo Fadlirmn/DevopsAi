@@ -2,12 +2,16 @@
 // service, which enforces public visibility itself (PRD.md §5).
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { json } from '@sveltejs/kit';
 import { proxyToRag } from '#lib/server/rag';
+import { DEMO_DOC, demoSource } from '#lib/server/demo/chat';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const GET: RequestHandler = (event) => {
 	const { params } = event;
+	// The bundled demo document (serverless demo + stored example) is served locally.
+	if (params.id === DEMO_DOC.documentId) return json(demoSource());
 	// Must validate before building the upstream URL: params are decoded, so
 	// `..%2Fadmin%2Fdocuments` would arrive as `../admin/documents` and fetch()
 	// would normalize it onto the unauthenticated RAG /admin/* routes.

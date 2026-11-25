@@ -29,8 +29,8 @@ export function demoAnswer(requestId: string) {
 		citations: [
 			{
 				marker: 1,
-				chunkId: 'demo-fixture-nist-3',
-				documentId: '',
+				chunkId: 'nist-66',
+				documentId: 'demo-nist', // served from the bundled index (/sources/demo-nist)
 				title: 'NIST SP 800-61 Rev. 2 — Computer Security Incident Handling Guide',
 				heading: '3. Handling an Incident',
 				page: 31,

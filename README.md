@@ -203,38 +203,62 @@ Isinya: SQL injection di semua input, path traversal, auth admin (tanpa cookie, 
 
 > Catatan jujur: dengan `LLM_PROVIDER=mock`, uji off-topic membuktikan lapisan retrieval + penegakan kutipan, **bukan** perilaku model AI sungguhan. Setelah API key diisi, jalankan skrip yang sama lagi. Skrip ini menghabiskan kuota rate limit IP-mu selama ±1 menit.
 
-## Demo di Vercel (frontend di Vercel, backend di VPS)
+## Demo di Vercel
 
-Sesuai `docs/PRD.md` §6: SvelteKit berjalan di Vercel, sedangkan RAG + Postgres tetap di VPS (Docker). Vercel memanggil RAG lewat HTTPS dengan kunci rahasia, jadi browser tidak pernah memanggil VPS langsung. Kalau VPS mati, chat menampilkan **jawaban contoh tersimpan** (kutipan asli NIST) dengan banner kuning "Mode demo — server AI sedang tidak terjangkau", jadi demo tidak pernah blank. Jawaban contoh tidak pernah disajikan sebagai jawaban live. Halaman admin tidak punya fallback. Kalau VPS hang (DNS hidup tapi server tidak membalas), mode demo muncul dalam ±3 detik: chat mengecek `/health` dulu dengan batas 3 detik, dan daftar koleksi juga dibatasi 3 detik. Fallback **tidak** dipakai kalau server hidup tapi menolak (rate limit, batas biaya, provider AI error); pesan aslinya yang ditampilkan.
+Demo bisa jalan **hanya di Vercel, tanpa VPS**, dan tetap dijawab AI sungguhan dari 1 dokumen (NIST SP 800-61r2). Dokumen lain otomatis tersedia begitu VPS aktif.
 
-**1. VPS** (Docker, seperti biasa, plus overlay Vercel):
+| Mode | Kapan aktif | Dokumen | AI |
+|---|---|---|---|
+| **1. VPS** | `RAG_SERVICE_URL` diisi dan VPS hidup | Semua (seed corpus) | ✅ provider di VPS |
+| **2. AI serverless** | `LLM_PROVIDER` diisi di Vercel, dan VPS tidak diisi atau mati | NIST SP 800-61r2 (bawaan build) | ✅ provider di Vercel |
+| **3. Jawaban contoh** | `DEMO_FALLBACK=1`, tidak ada AI | NIST (1 contoh tersimpan) | ❌ (banner kuning "Mode demo") |
+
+Urutannya otomatis: VPS → AI serverless → jawaban contoh. Kalau VPS hidup tapi menolak (rate limit, batas biaya, provider error), pesan aslinya yang ditampilkan. Kalau VPS hang, beralih dalam ±3 detik (cek `/health` dulu).
+
+**Cara kerja mode 2 (`apps/web/src/lib/server/demo/`):**
+1. Validasi input dan **rate limit per IP** di **Upstash Redis** (dihitung bersama oleh semua instance serverless).
+2. Cache jawaban (7 hari) dan **batas biaya harian**.
+3. AI menerjemahkan pertanyaan (bahasa apa pun) menjadi kata kunci Inggris. Kalau di luar topik, AI menjawab `NONE` dan proses berhenti di sini, tanpa panggilan kedua.
+4. Pencarian **BM25** di `nist-index.json` (200 potongan, dibuat oleh `services/rag/scripts/export_demo_index.py` dengan extractor yang sama dengan VPS).
+5. AI menjawab hanya dari potongan itu, dalam format JSON berkutipan. Jawaban tanpa kutipan valid **selalu diganti** teks penolakan baku.
+
+Prompt, aturan kutipan, dan teks penolakannya sama persis dengan VPS. API key hanya ada di server Vercel, tidak pernah sampai ke browser.
+
+### Langkah deploy (Vercel saja, tanpa VPS)
+1. vercel.com → **Add New → Project** → import repo ini.
+   - **Root Directory:** `apps/web`. SvelteKit terdeteksi otomatis, dan build otomatis memakai `adapter-vercel` dengan runtime **Node 24**.
+   - **Settings → General → Node.js Version:** `24.x`.
+2. **Storage / Marketplace → Upstash for Redis → Create** (free tier) → hubungkan ke project. Env `KV_REST_API_URL`/`KV_REST_API_TOKEN` (atau `UPSTASH_REDIS_REST_URL`/`_TOKEN`) terisi otomatis.
+3. **Environment Variables:**
+
+| Nama | Contoh | Wajib |
+|---|---|---|
+| `LLM_PROVIDER` | `anthropic` · `openai` · `gemini` · `openai-compatible` | ✅ |
+| `LLM_API_KEY` | kunci provider | ✅ (kecuali openai-compatible lokal) |
+| `LLM_MODEL` | default Claude `claude-opus-5-5`; provider lain wajib diisi | sesuai provider |
+| `LLM_BASE_URL` | untuk openai-compatible (Groq, OpenRouter, …) | sesuai provider |
+| `DAILY_SPEND_CAP_USD` | `1` | sangat disarankan untuk demo publik |
+| `RATE_LIMIT_PER_MINUTE` / `RATE_LIMIT_PER_DAY` | `10` / `100` (default) | – |
+| `DEMO_FALLBACK` | `1` | disarankan: kalau provider bermasalah, tetap ada jawaban contoh |
+| Firebase (`PUBLIC_FIREBASE_*`, `FIREBASE_PROJECT_ID`, `ADMIN_UIDS`) | | opsional, hanya untuk login admin |
+
+4. **Deploy.** Fungsi chat diberi `maxDuration: 60` detik, karena ada 2 panggilan AI per pertanyaan baru.
+
+Mode 2 tidak butuh API embedding, jadi Claude saja sudah cukup. Biaya per pertanyaan baru = 2 panggilan AI kecil; pertanyaan berulang diambil dari cache (gratis). Tanpa Upstash, rate limit dan batas biaya hanya per instance dan lebih mudah ditembus (ada peringatan di log). Untuk demo publik, pakai Upstash dan pasang juga batas pengeluaran di dashboard provider.
+
+**Login admin di mode Vercel-only:** tetap berfungsi, karena verifikasi token terjadi di server Vercel. Tambahkan domain Vercel di Firebase → Authentication → Settings → **Authorized domains**. Isi panel admin (dokumen, evaluasi) kosong sampai VPS aktif.
+
+### Nanti, saat VPS aktif (semua dokumen)
+VPS dijalankan dengan overlay Vercel:
 ```bash
-# infra/.env
+# infra/.env di VPS
 DOMAIN=knowledge.domain-kamu.com
-RAG_DOMAIN=rag.domain-kamu.com      # DNS A record -> IP VPS
-RAG_API_KEY=<openssl rand -hex 32>  # wajib
-SEED_SET=demo                       # hanya NIST SP 800-61r2
-LLM_PROVIDER=...                    # lihat "AI provider"
-DAILY_SPEND_CAP_USD=2               # disarankan untuk demo publik
+RAG_DOMAIN=rag.domain-kamu.com        # DNS A record -> IP VPS
+RAG_API_KEY=<openssl rand -hex 32>
+SEED_SET=all                          # semua dokumen
+LLM_PROVIDER=...  EMBEDDING_PROVIDER=...   # lihat "AI provider"
 
 docker compose -f infra/compose.yaml -f infra/compose.vercel.yaml up -d --build
 curl -s -o /dev/null -w '%{http_code}\n' https://rag.domain-kamu.com/collections   # 401 = terkunci dengan benar
 ```
-
-**2. Vercel** (dashboard → Add New → Project → import repo ini):
-- **Root Directory:** `apps/web`. Framework terdeteksi otomatis (SvelteKit). Saat build di Vercel (`VERCEL=1`), `vite.config.ts` otomatis memakai `@sveltejs/adapter-vercel` dengan runtime **Node 24** (`nodejs24.x`). Di Docker tetap `adapter-node`.
-- **Node.js Version:** 24.x (Settings → General).
-- **Environment Variables:**
-
-| Nama | Nilai |
-|---|---|
-| `RAG_SERVICE_URL` | `https://rag.domain-kamu.com` |
-| `RAG_API_KEY` | sama dengan di VPS |
-| `DEMO_FALLBACK` | `1` |
-| `PUBLIC_FIREBASE_API_KEY` / `PUBLIC_FIREBASE_AUTH_DOMAIN` / `PUBLIC_FIREBASE_PROJECT_ID` | dari Firebase (opsional, hanya untuk login admin) |
-| `FIREBASE_PROJECT_ID` / `ADMIN_UIDS` | opsional, untuk admin |
-
-- Kalau login admin dipakai: tambahkan domain Vercel (`xxx.vercel.app` dan domain kustom) di Firebase → Authentication → Settings → **Authorized domains**.
-- Rate limit tetap berlaku per pengunjung: Vercel meneruskan IP asli pengunjung ke RAG.
-
-**Coba mode demo tanpa VPS:** deploy ke Vercel dengan `DEMO_FALLBACK=1` dan `RAG_SERVICE_URL` dikosongkan atau diisi alamat yang mati. Chat langsung menampilkan jawaban contoh berbanner.
+Lalu di Vercel tambahkan `RAG_SERVICE_URL=https://rag.domain-kamu.com` dan `RAG_API_KEY` (nilai yang sama), kemudian redeploy. Chat otomatis memakai VPS (semua dokumen). Mode 2 tetap jadi cadangan kalau VPS mati.

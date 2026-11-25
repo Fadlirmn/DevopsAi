@@ -9,6 +9,7 @@ from ..config import EMBEDDING_DIM
 from ..interfaces import ChunkHit, GroundedAnswer
 from .grounding import (
     ABSTAIN_TEXT,
+    REFUSAL_TEXT,
     ANSWER_SCHEMA,
     SYSTEM_PROMPT,
     ProviderUnavailable,
@@ -55,14 +56,21 @@ class GeminiGenerator:
                     system_instruction=SYSTEM_PROMPT,
                     response_mime_type="application/json",
                     response_json_schema=ANSWER_SCHEMA,
-                    max_output_tokens=4096,
+                    # Thinking tokens count against this limit on Gemini 3.x.
+                    max_output_tokens=16384,
                 ),
             )
         except Exception as e:  # SDK raises errors.* for HTTP, httpx errors for network
             raise _wrap(e) from e
+        finish = str(resp.candidates[0].finish_reason) if resp.candidates else ""
+        if finish.endswith("MAX_TOKENS"):
+            raise ProviderUnavailable("truncated", "answer hit max_output_tokens")
         meta = resp.usage_metadata
         usage_in = (getattr(meta, "prompt_token_count", 0) or 0) if meta else 0
-        usage_out = (getattr(meta, "candidates_token_count", 0) or 0) if meta else 0
+        # Billed output includes thinking tokens.
+        usage_out = ((getattr(meta, "candidates_token_count", 0) or 0) + (getattr(meta, "thoughts_token_count", 0) or 0)) if meta else 0
+        if not resp.candidates or finish.endswith(("SAFETY", "PROHIBITED_CONTENT")):
+            return GroundedAnswer(REFUSAL_TEXT, [], False, usage_in, usage_out)
         try:
             return parse_answer(resp.text or "", context, usage_in, usage_out)
         except (ValueError, TypeError) as e:
