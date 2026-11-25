@@ -14,10 +14,14 @@ EMBEDDING_DIM = 768  # must match chunks.embedding vector(768) in 0001_init.sql
 LLM_PROVIDERS = {"mock", "anthropic", "openai", "gemini", "openai-compatible"}
 EMBEDDING_PROVIDERS = {"mock", "openai", "gemini", "openai-compatible"}
 
-# Default model per provider. Only Anthropic and the embedding models have a
-# default; for openai / gemini / openai-compatible LLMs the model must be set
-# explicitly (LLM_MODEL) because their catalogs change too often to guess.
-DEFAULT_LLM_MODEL = {"anthropic": "claude-opus-5-5", "mock": "mock-dev-v1"}
+# Default model per provider. OpenAI / openai-compatible LLMs must be set
+# explicitly (LLM_MODEL); their catalogs change too often to guess.
+# Cheapest tier by default: grounded document Q&A doesn't need a big model.
+DEFAULT_LLM_MODEL = {
+    "anthropic": "claude-haiku-5-5",
+    "gemini": "gemini-flash-lite-latest",  # Google alias -> newest Lite release
+    "mock": "mock-dev-v1",
+}
 DEFAULT_EMBEDDING_MODEL = {
     "openai": "text-embedding-3-small",
     "gemini": "gemini-embedding-001",

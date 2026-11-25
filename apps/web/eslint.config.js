@@ -37,6 +37,11 @@ export default defineConfig(
 		}
 	},
 	{
+		// Plain-JS node:test files outside tsconfig: lint them without type info.
+		files: ['tests/**/*.mjs'],
+		...ts.configs.disableTypeChecked
+	},
+	{
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
 		rules: {}

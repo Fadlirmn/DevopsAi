@@ -3,7 +3,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { proxyToRag } from '#lib/server/rag';
+import { proxyToRag, RAG_CONFIGURED } from '#lib/server/rag';
 import { DEMO_DOC, demoSource } from '#lib/server/demo/chat';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,5 +16,7 @@ export const GET: RequestHandler = (event) => {
 	// `..%2Fadmin%2Fdocuments` would arrive as `../admin/documents` and fetch()
 	// would normalize it onto the unauthenticated RAG /admin/* routes.
 	if (!UUID_RE.test(params.id)) throw error(404, 'source not found');
+	// Vercel-only demo: every other document lives on the VPS, which isn't there.
+	if (!RAG_CONFIGURED) throw error(404, 'source not found');
 	return proxyToRag(event, `/sources/${encodeURIComponent(params.id)}`);
 };

@@ -182,6 +182,14 @@
 		if (innerWidth <= 640) railOpen = false;
 	}
 
+	function removeChat(c: Chat) {
+		if (!confirm(`Hapus percakapan "${c.title}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+		chats = chats.filter((x) => x.id !== c.id);
+		if (currentId === c.id) currentId = null;
+		persist();
+		say('Percakapan dihapus');
+	}
+
 	const DAY = 86_400_000;
 	let groups = $derived.by(() => {
 		const f = search.toLowerCase();
@@ -348,9 +356,23 @@
 						{#each groups as g (g.g)}
 							<div class="hg">{g.g}</div>
 							{#each g.i as c (c.id)}
-								<button class="hi" class:on={c.id === currentId} onclick={() => openChat(c)}>
-									<span>{c.title}</span>
-								</button>
+								<div class="hrow">
+									<button class="hi" class:on={c.id === currentId} onclick={() => openChat(c)}>
+										<span>{c.title}</span>
+									</button>
+									<button
+										class="hdel"
+										aria-label={`Hapus percakapan "${c.title}"`}
+										title="Hapus percakapan"
+										onclick={() => removeChat(c)}
+									>
+										<svg viewBox="0 0 24 24">
+											<path
+												d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+											/>
+										</svg>
+									</button>
+								</div>
 							{/each}
 						{/each}
 					</div>
@@ -406,8 +428,8 @@
 				<div class="col" id="log" aria-live="polite" aria-relevant="additions text">
 					{#if !current}
 						<div class="a" style="color:var(--mute);text-align:center;margin-top:20vh">
-							{#if cleared}Sesi kosong. Tanya apa saja.{:else if !collections.length}Belum
-								ada collection publik.{:else}Chat baru. Tanya apa saja.{/if}
+							{#if cleared}Sesi kosong. Tanya apa saja.{:else if !collections.length}Belum ada
+								collection publik.{:else}Chat baru. Tanya apa saja.{/if}
 						</div>
 					{:else}
 						{#each current.turns as turn, ti (ti)}

@@ -27,8 +27,23 @@ export const handle: Handle = async ({ event, resolve }) => {
 			);
 		}
 		const next = encodeURIComponent(path);
-		return new Response(null, { status: 302, headers: { location: `/login?next=${next}` } });
+		const redirect = new Response(null, {
+			status: 302,
+			headers: { location: `/login?next=${next}` }
+		});
+		setSecurityHeaders(redirect.headers);
+		return redirect;
 	}
 
-	return resolve(event);
+	const response = await resolve(event);
+	setSecurityHeaders(response.headers);
+	return response;
 };
+
+// Same headers Caddy adds on the VPS — set here too so a Vercel deploy (no
+// Caddy in front) gets them. Caddy's `header` directive simply overwrites.
+function setSecurityHeaders(h: Headers) {
+	h.set('X-Content-Type-Options', 'nosniff');
+	h.set('X-Frame-Options', 'DENY');
+	h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+}

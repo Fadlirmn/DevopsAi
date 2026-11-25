@@ -437,3 +437,48 @@
 .chat-app .doc .attr a {
 	color: var(--acc-txt);
 }
+
+/* --- History row: delete button (trash), shown on hover/focus/active ---
+   Overrides the rail's "every button is a full-width row" rule. */
+.chat-app .rail .hist .hrow {
+	display: flex;
+	align-items: center;
+	border-radius: 10px;
+}
+.chat-app .rail .hist .hrow .hi {
+	flex: 1;
+	min-width: 0;
+}
+.chat-app .rail.open .hist .hrow .hdel {
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	margin-left: 2px;
+	flex-shrink: 0;
+	justify-content: center;
+	border-radius: 8px;
+	color: var(--mute);
+	opacity: 0;
+}
+.chat-app .rail.open .hist .hrow .hdel svg {
+	width: 16px;
+	height: 16px;
+}
+.chat-app .rail.open .hist .hrow:hover .hdel,
+.chat-app .rail.open .hist .hrow .hdel:focus-visible,
+.chat-app .rail.open .hist .hrow .hi.on + .hdel {
+	opacity: 1;
+}
+.chat-app .rail.open .hist .hrow .hdel:hover {
+	background: var(--hover);
+	color: #ff9592;
+}
+:root[data-theme='light'] .chat-app .rail.open .hist .hrow .hdel:hover {
+	color: #cd2b31;
+}
+@media (hover: none) {
+	/* touch screens have no hover: keep the button visible */
+	.chat-app .rail.open .hist .hrow .hdel {
+		opacity: 1;
+	}
+}

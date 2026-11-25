@@ -90,7 +90,12 @@ function payload(
 	};
 }
 
+// The chat route has maxDuration 60 s on Vercel; leave ~10 s headroom so we
+// always answer (or fall back) before the platform kills the function.
+const BUDGET_MS = 50_000;
+
 export async function serverlessChat(event: RequestEvent, body: unknown): Promise<Response> {
+	const deadline = Date.now() + BUDGET_MS;
 	const c = demoConfig();
 	if (!c) throw error(503, 'demo AI not configured');
 
@@ -133,7 +138,7 @@ export async function serverlessChat(event: RequestEvent, body: unknown): Promis
 	const calls: Completion[] = [];
 	try {
 		// 1) English keywords for an English corpus; NONE = clearly off-topic.
-		const rewrite = await complete(c, REWRITE_PROMPT, message, false);
+		const rewrite = await complete(c, REWRITE_PROMPT, message, false, deadline);
 		calls.push(rewrite);
 		const keywords = rewrite.refused ? 'NONE' : rewrite.text.trim().split('\n')[0];
 
@@ -153,7 +158,13 @@ export async function serverlessChat(event: RequestEvent, body: unknown): Promis
 					page: h.page,
 					content: h.content
 				}));
-				const answer = await complete(c, SYSTEM_PROMPT, buildUserMessage(message, passages), true);
+				const answer = await complete(
+					c,
+					SYSTEM_PROMPT,
+					buildUserMessage(message, passages),
+					true,
+					deadline
+				);
 				calls.push(answer);
 				if (answer.refused) {
 					result = payload(REFUSAL_TEXT, [], false, requestId, calls);
