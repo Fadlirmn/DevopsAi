@@ -7,12 +7,21 @@ import type { RequestHandler } from './$types';
 import { fetchRag, toResponse, DEMO_FALLBACK } from '#lib/server/rag';
 import { demoAnswer } from '#lib/server/demo-fixture';
 
+const HEALTH_PROBE_MS = 3_000;
+
 export const POST: RequestHandler = async (event) => {
 	let body: unknown;
 	try {
 		body = await event.request.json();
 	} catch {
 		throw error(400, 'invalid JSON body');
+	}
+	// Demo mode: probe /health with a short timeout first. A VPS that hangs
+	// (DNS resolves, nothing answers) would otherwise hold the visitor for the
+	// full /chat timeout before the fallback shows. Costs one small round trip
+	// when the backend is up.
+	if (DEMO_FALLBACK && !(await fetchRag(event, '/health', {}, HEALTH_PROBE_MS))) {
+		return json(demoAnswer(crypto.randomUUID()));
 	}
 	const r = await fetchRag(event, '/chat', {
 		method: 'POST',

@@ -205,7 +205,7 @@ Isinya: SQL injection di semua input, path traversal, auth admin (tanpa cookie, 
 
 ## Demo di Vercel (frontend di Vercel, backend di VPS)
 
-Sesuai `docs/PRD.md` §6: SvelteKit berjalan di Vercel, sedangkan RAG + Postgres tetap di VPS (Docker). Vercel memanggil RAG lewat HTTPS dengan kunci rahasia, jadi browser tidak pernah memanggil VPS langsung. Kalau VPS mati, chat menampilkan **jawaban contoh tersimpan** (kutipan asli NIST) dengan banner kuning "Mode demo — server AI sedang tidak terjangkau", jadi demo tidak pernah blank. Jawaban contoh tidak pernah disajikan sebagai jawaban live. Halaman admin tidak punya fallback.
+Sesuai `docs/PRD.md` §6: SvelteKit berjalan di Vercel, sedangkan RAG + Postgres tetap di VPS (Docker). Vercel memanggil RAG lewat HTTPS dengan kunci rahasia, jadi browser tidak pernah memanggil VPS langsung. Kalau VPS mati, chat menampilkan **jawaban contoh tersimpan** (kutipan asli NIST) dengan banner kuning "Mode demo — server AI sedang tidak terjangkau", jadi demo tidak pernah blank. Jawaban contoh tidak pernah disajikan sebagai jawaban live. Halaman admin tidak punya fallback. Kalau VPS hang (DNS hidup tapi server tidak membalas), mode demo muncul dalam ±3 detik: chat mengecek `/health` dulu dengan batas 3 detik, dan daftar koleksi juga dibatasi 3 detik. Fallback **tidak** dipakai kalau server hidup tapi menolak (rate limit, batas biaya, provider AI error); pesan aslinya yang ditampilkan.
 
 **1. VPS** (Docker, seperti biasa, plus overlay Vercel):
 ```bash

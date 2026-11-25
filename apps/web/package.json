@@ -6,6 +6,7 @@
 	"engines": {
 		"node": ">=24"
 	},
+	"packageManager": "pnpm@10.34.3",
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
