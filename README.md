@@ -32,7 +32,7 @@ RAG knowledge system for IT docs/incident runbooks — SvelteKit + FastAPI + Pos
 - `infra/.env.example` — sample environment keys (no credentials).
 - `infra/Caddyfile` — HTTPS reverse proxy template, adapt API health/routes.
 
-**Status:** the query path (cache → retrieve → generate → validate citations) and every page in `docs/PRD.md` §5 are real, running against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see `docs/PRD.md` §15). Admin pages are now gated behind real Firebase ID-token verification (`src/hooks.server.ts` + `src/lib/server/firebase-auth.ts`, PRD.md §9 K-02) — but there's no real Firebase *project* configured yet (`apps/web/.env` has placeholder values), so sign-in itself can't be tested end to end until one exists; every rejection path (no cookie, forged token, bad signature) is verified against Google's real public keys. Ingestion (PDF parsing/chunking) is still a stub; see `docs/IMPLEMENTATION.md`.
+**Status:** the query path (cache → retrieve → generate → validate citations) and every page in `docs/PRD.md` §5 are real, running against real Postgres+pgvector, with a deterministic **mock** embedder/LLM (no paid API key needed — see `docs/PRD.md` §15). Admin pages are now gated behind real Firebase ID-token verification (`src/hooks.server.ts` + `src/lib/server/firebase-auth.ts`, PRD.md §9 K-02) — but there's no real Firebase *project* configured yet (`apps/web/.env` has placeholder values), so sign-in itself can't be tested end to end until one exists; every rejection path (no cookie, forged token, bad signature) is verified against Google's real public keys (a forged token now fails on its signature; before the JWK URL fix it failed earlier, on a 404 fetching the keys, which would also have rejected valid tokens). Ingestion (PDF parsing/chunking) is still a stub; see `docs/IMPLEMENTATION.md`.
 
 **Known tooling gap:** `pnpm check` still reports ~7 errors for `#lib/*` and the `Handle` type — module-resolution-only, confirmed harmless by running the actual production build and server (`pnpm build && node build/index.js`), not just reading source. This `@sveltejs/kit` version (3.x) resolves `src/env.ts`, `#lib/*`, and `hooks.server.ts`'s ambient types through a mechanism the installed `svelte-check`/`tsc` CLI doesn't fully support standalone yet. (A real, now-fixed bug this surfaced: this kit version requires env vars exposed to the client to be explicitly declared in `src/env.ts` — see that file — the old "anything prefixed `PUBLIC_` in `.env`" auto-detection is gone.)
 
@@ -47,11 +47,29 @@ services/rag/         Python FastAPI: real retriever/cache/citation-validator, m
 services/worker/      Python: ingestion worker entrypoint (stub — M1)
 database/migrations/  Versioned SQL (0001_init.sql = core schema)
 packages/contracts/   Shared API types — added once more endpoints exist
-infra/                compose.dev.yaml (local Postgres), Caddyfile, .env.example (compose.yaml: Stage 4)
+infra/                compose.yaml (full stack, local + VPS), compose.dev.yaml (Postgres only, for hot-reload dev), Caddyfile, .env.example
 eval/, scripts/, .github/workflows/  placeholders for later milestones
 ```
 
-## Local dev (real query path, mock provider)
+## Run everything in Docker (main way — local and VPS)
+Same `infra/compose.yaml` everywhere: Postgres+pgvector, the RAG service, the SvelteKit web app and Caddy. Only Caddy publishes ports; `db` and `rag` sit on an internal-only network (unreachable from the host or the internet, and with no outbound access).
+```bash
+cp infra/.env.example infra/.env        # set POSTGRES_PASSWORD: openssl rand -hex 32
+docker compose -f infra/compose.yaml up -d --build
+docker compose -f infra/compose.yaml run --rm rag python scripts/seed_dev.py   # demo data (optional on a VPS)
+```
+- **Local:** the example defaults (`DOMAIN=:80`, `HTTP_PORT=8080`) serve plain HTTP at `http://localhost:8080` → `/demo`.
+- **VPS:** in `infra/.env` set `DOMAIN=your.domain` (DNS A/AAAA pointing at the VPS), `HTTP_PORT=80`, `HTTPS_PORT=443`, then `chmod 600 infra/.env`. Caddy gets the TLS certificate automatically. Firewall: open only 80/443 (+ SSH). See `docs/DEPLOY_VPS.md`.
+- **Admin:** fill the `FIREBASE_*`/`ADMIN_UIDS` values in `infra/.env` (see "Admin login" below), then `up -d` again. They're read at container start, so there's no rebuild. Left empty, the demo works and `/admin` stays locked.
+- **Update after `git pull`:** `docker compose -f infra/compose.yaml up -d --build`.
+- **Logs / status:** `docker compose -f infra/compose.yaml ps` / `logs -f web rag`.
+- **Migrations:** `database/migrations/*.sql` auto-apply only on the first start of an empty `db_data` volume. Apply a later one explicitly: `docker compose -f infra/compose.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/000N_x.sql`.
+- **Backup:** `docker compose -f infra/compose.yaml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > backup.sql.gz`. Copy it off the host.
+- **Wipe everything (incl. data):** `docker compose -f infra/compose.yaml down -v`.
+
+Not containerized yet: the ingestion worker (still a stub, `services/worker`).
+
+## Local dev without Docker for the app (hot reload; real query path, mock provider)
 ```bash
 # 1. Postgres + pgvector, migration applies automatically on first start
 docker compose -f infra/compose.dev.yaml up -d db

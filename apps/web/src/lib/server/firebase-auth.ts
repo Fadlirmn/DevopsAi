@@ -15,7 +15,7 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const JWKS_URL =
-	'https://www.googleapis.com/service_accounts/v1/jwks/securetoken@system.gserviceaccount.com';
+	'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 

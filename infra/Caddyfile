@@ -1,4 +1,5 @@
-# TEMPLATE: requires Caddy with DNS pointing to VPS, ports 80/443 available.
+# Used by infra/compose.yaml. DOMAIN=:80 -> plain HTTP on any host (local);
+# DOMAIN=knowledge.example.com -> automatic HTTPS (VPS, DNS must point here).
 {$DOMAIN:knowledge.example.com} {
     encode zstd gzip
     header {

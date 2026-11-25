@@ -1,6 +1,6 @@
 # VPS deployment runbook — knowledgeops-ai
 
-**Blueprint only:** the application source, Dockerfiles, Compose manifest, Caddy image and migrations must exist before these commands can execute. See the PRD and implementation guide.
+`infra/compose.yaml` + `apps/web/Dockerfile` + `services/rag/Dockerfile` exist and are runnable (the worker is not containerized yet). Quick start is also in the README's "Run everything in Docker" section.
 
 ## 1. Provision
 - Supported Ubuntu LTS; SSH key login; nonroot deploy user; patched OS; restrict SSH to a management IP or VPN.
@@ -10,22 +10,22 @@
 ## 2. Configure
 ```bash
 cd /opt/knowledgeops-ai
-cp infra/.env.example infra/.env.production
-chmod 600 infra/.env.production
-# Edit replacements locally on VPS, mount credentials in protected paths.
-docker compose -f infra/compose.yaml --env-file infra/.env.production config --quiet
+cp infra/.env.example infra/.env
+chmod 600 infra/.env
+# Edit on the VPS: DOMAIN, HTTP_PORT=80, HTTPS_PORT=443, POSTGRES_PASSWORD, Firebase values.
+docker compose -f infra/compose.yaml config --quiet
 ```
 **Security warning:** environment variables and Compose interpolation may leak into `docker inspect`; limit host/operator access and use file-mounted secrets when feasible. Never print expanded config to public logs.
 
-## 3. Deploy after implementation
+## 3. Deploy
 ```bash
-# Verify image digests and backing up state before migrations.
-docker compose -f infra/compose.yaml --env-file infra/.env.production pull
-# Run one-off, backward compatible database migrations using the app's migration command.
-docker compose -f infra/compose.yaml --env-file infra/.env.production up -d
-# Review readiness, external HTTPS behavior, and service logs.
-docker compose -f infra/compose.yaml --env-file infra/.env.production ps
+git pull
+# Back up the DB before any new migration (see README for the pg_dump / psql one-liners).
+docker compose -f infra/compose.yaml up -d --build
+docker compose -f infra/compose.yaml ps          # all services healthy
+curl -I https://$DOMAIN/health
 ```
+Images are built on the VPS for now; pulling pinned image digests from a registry is the CI/CD target in §5.
 
 ## 4. Operations
 - HTTPS test + HTTP redirect, failed-auth checks, public data boundary tests, read-only access verification.

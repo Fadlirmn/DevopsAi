@@ -9,3 +9,4 @@ infra/.env.production
 *.env.production
 .DS_Store
 eval/datasets/raw/
+infra/.env

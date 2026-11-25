@@ -36,7 +36,7 @@ Set Node adapter for SvelteKit SSR; expose only internal port 3000. FastAPI list
 ## Stage 4 — VPS deployment
 1. Implement `apps/web/Dockerfile`, `services/rag/Dockerfile`, `services/worker/Dockerfile` and Compose referenced services. Choose external private S3 bucket or add compatible private MinIO service and data volume; DO NOT route public uploads to an unauthenticated MinIO port.
 2. Copy `infra/.env.example` to `infra/.env.production` **on VPS only**; fill strong passwords and provider secrets; `chmod 600`. Mount Firebase admin credentials as a secret file and grant least privilege.
-3. Configure DNS and `DOMAIN`; deploy Caddy (`infra/Caddyfile`) with ports 80/443 and persisted TLS state; set correct upstream hostnames; ensure ingress path `/api/*` maps to FastAPI without stripping expected route prefix.
+3. Configure DNS and `DOMAIN`; deploy Caddy (`infra/Caddyfile`) with ports 80/443 and persisted TLS state; all paths go to the SvelteKit BFF (`web:3000`), which owns `/api/v1/*` and admin auth. FastAPI is never routed by Caddy; it stays on the internal network only.
 4. Run `docker compose -f infra/compose.yaml --env-file infra/.env.production config --quiet` and confirm no secrets accidentally appear in logs; run migration as an explicit one-off job before serving traffic.
 5. `docker compose ... up -d --build`; wait on `/health/ready`, validate HTTPS, authenticated admin, public query with citation, private access denied, worker ingestion and backup.
 6. Never publish Postgres, worker, object-store admin or Docker API ports. Check firewall and external ports; configure TLS alerts, quotas, timeouts, restart policies, resource caps, log rotation and uptime alerts.
