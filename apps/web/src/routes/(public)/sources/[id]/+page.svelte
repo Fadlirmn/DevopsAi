@@ -18,6 +18,8 @@
 		collectionTitle: string;
 		collectionSlug: string;
 		versionNumber: number;
+		sourceUrl: string | null;
+		license: string | null;
 		chunks: Chunk[];
 	};
 
@@ -45,6 +47,20 @@
 				<div>
 					<h1>{source.title}</h1>
 					<p class="sub">{source.collectionTitle} · v{source.versionNumber}</p>
+					{#if source.sourceUrl || source.license}
+						<!-- Attribution: required for CC BY sources (Kubernetes docs). -->
+						<p class="sub attr">
+							{#if source.sourceUrl}Sumber asli: <a
+									href={source.sourceUrl}
+									rel="noopener"
+									target="_blank"
+								>
+									{new URL(source.sourceUrl).hostname}
+								</a>{/if}{#if source.sourceUrl && source.license}
+								·
+							{/if}{#if source.license}Lisensi: {source.license}{/if}
+						</p>
+					{/if}
 					<div class="srcs">
 						{#each source.chunks as chunk (chunk.chunkId)}
 							<div

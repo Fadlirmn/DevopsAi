@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
-import adapter from '@sveltejs/adapter-node';
+import adapterNode from '@sveltejs/adapter-node';
+import adapterVercel from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
@@ -13,8 +14,9 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// Node SSR adapter: VPS default per PRD.md §6 (exposes port 3000 internally only).
-			adapter: adapter()
+			// Vercel sets VERCEL=1 during its builds → serverless functions on Node 24.
+			// Everywhere else (Docker/VPS, PRD.md §6 default) → Node server on port 3000.
+			adapter: process.env.VERCEL ? adapterVercel({ runtime: 'nodejs24.x' }) : adapterNode()
 		})
 	]
 });

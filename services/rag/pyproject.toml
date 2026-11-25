@@ -6,6 +6,12 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "asyncpg>=0.30",
+    # AI providers — chosen at runtime by LLM_PROVIDER / EMBEDDING_PROVIDER.
+    "anthropic>=2.14",
+    "openai>=3.59",
+    "google-genai>=3.6",
+    # seed corpus ingestion
+    "pypdf>=7.1",
 ]
 
 [build-system]

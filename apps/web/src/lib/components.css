@@ -420,3 +420,20 @@
 .admin-app .brand small {
 	padding-left: 34px;
 }
+
+/* --- Vercel demo-mode banner (backend unreachable, fixture answer) --- */
+.chat-app .demo-banner {
+	border: 1px solid color-mix(in srgb, #ffc53d 55%, transparent);
+	background: color-mix(in srgb, #ffc53d 10%, transparent);
+	border-radius: 12px;
+	padding: 8px 12px;
+	font-size: 14px;
+	margin-bottom: 12px;
+}
+.chat-app .doc .attr {
+	margin-top: -8px;
+	font-size: 13px;
+}
+.chat-app .doc .attr a {
+	color: var(--acc-txt);
+}

@@ -4,7 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install . && useradd --system --uid 10001 app
+RUN pip install . && useradd --system --uid 10001 app \
+    && mkdir -p /corpus && chown app /corpus  # seed corpus cache (named volume)
 # scripts/ shipped so `docker compose run --rm rag python scripts/seed_dev.py` works.
 COPY scripts ./scripts
 USER app

@@ -14,4 +14,6 @@ def validate_citations(answer: GroundedAnswer, retrieved: list[ChunkHit]) -> Gro
         text=answer.text,
         cited_chunk_ids=kept,
         grounded=answer.grounded and bool(kept),
+        input_tokens=answer.input_tokens,
+        output_tokens=answer.output_tokens,
     )

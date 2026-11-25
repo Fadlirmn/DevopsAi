@@ -17,6 +17,7 @@ JOIN document_versions v ON v.id = c.version_id
 JOIN documents d ON d.active_version_id = v.id AND d.status = 'published'
 JOIN collections col ON col.id = d.collection_id AND col.status = 'published'
 WHERE col.slug = $2 AND col.visibility = 'public'
+  AND v.embedding_model = $4  -- only vectors from the embedder that embeds the query
 ORDER BY c.embedding <=> $1::vector
 LIMIT $3;
 """
@@ -30,13 +31,16 @@ class PgRetriever:
     """Implements rag.interfaces.Retriever. `collection_id` here is the slug —
     that's what the public API and this query both key on."""
 
-    def __init__(self, embedder: Embedder) -> None:
+    def __init__(self, embedder: Embedder, embedding_label: str) -> None:
         self._embedder = embedder
+        self._embedding_label = embedding_label
 
     async def retrieve(self, query: str, collection_id: str, limit: int) -> list[ChunkHit]:
         embedding = await self._embedder.embed_query(query)
         pool = await get_pool()
-        rows = await pool.fetch(_SQL, _to_vector_literal(embedding), collection_id, limit)
+        rows = await pool.fetch(
+            _SQL, _to_vector_literal(embedding), collection_id, limit, self._embedding_label
+        )
         return [
             ChunkHit(
                 chunk_id=str(r["chunk_id"]),

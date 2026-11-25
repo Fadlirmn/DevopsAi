@@ -2,37 +2,62 @@
 (PRD.md §6 service boundaries). Not the public contract: SvelteKit's
 /api/v1/chat proxies to this process's /chat.
 
-Dev/mock mode only: wired to MockEmbedder/MockGenerator so it runs without
-a paid provider (PRD.md §15 Definition of done). Swap those two for real
-provider adapters when one is pinned (PRD.md §7) — nothing else changes,
-that's the point of the Embedder/Generator protocols in interfaces.py.
+The LLM and embedding providers are chosen by env (rag.config): mock (default,
+no API key needed), anthropic, openai, gemini, or any openai-compatible server.
+
+Access: when RAG_API_KEY is set, every request except /health must carry it in
+`x-internal-key`. That is mandatory once this service is reachable from the
+internet (Vercel + VPS mode); on the private Docker network it is defense in
+depth. The BFF forwards the visitor IP in `x-client-ip` for rate limiting and
+sets `x-rate-exempt: 1` for verified admins — both headers are only trusted
+because the key authenticates the caller.
 """
 
+import hmac
 import json
-import os
+import logging
 import time
 import uuid
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from .cache import cache_key, collection_fingerprint, get_cached, set_cached
 from .citations import validate_citations
+from .config import load_settings
 from .db import get_pool
 from .interfaces import ChunkHit
-from .mock_embedder import MockEmbedder
-from .mock_generator import MIN_SIMILARITY, MockGenerator
+from .mock_generator import MIN_SIMILARITY
+from .providers import ProviderUnavailable, build_embedder, build_generator
+from .ratelimit import actor_hash, check_rate_limit, estimate_cost, spend_today_usd
 from .retriever import PgRetriever
 
-PIPELINE_VERSION = os.environ.get("PIPELINE_VERSION", "dev-mock-v1")
-MODEL_ID = "mock-dev-v1"
+log = logging.getLogger("rag")
+
+SETTINGS = load_settings()  # fails fast at startup on a bad provider config
+PIPELINE_VERSION = SETTINGS.pipeline_version
+MODEL_ID = SETTINGS.model_label
 RETRIEVAL_TOP_K = 6  # PRD.md §6 query flow: select 4-8 chunks within token budget
 
 app = FastAPI(title="knowledgeops-rag")
-_embedder = MockEmbedder()
-_generator = MockGenerator()
-_retriever = PgRetriever(_embedder)
+_embedder = build_embedder(SETTINGS)
+_generator = build_generator(SETTINGS)
+_retriever = PgRetriever(_embedder, SETTINGS.embedding_label)
+
+
+@app.middleware("http")
+async def require_internal_key(request: Request, call_next):
+    if SETTINGS.rag_api_key and request.url.path != "/health":
+        given = request.headers.get("x-internal-key", "")
+        if not hmac.compare_digest(given, SETTINGS.rag_api_key):
+            return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    return await call_next(request)
+
+
+def _client_ip(request: Request) -> str:
+    return request.headers.get("x-client-ip") or (request.client.host if request.client else "unknown")
 
 
 class ChatRequest(BaseModel):
@@ -179,17 +204,48 @@ async def get_settings() -> dict:
         db_ok = True
     except Exception:
         db_ok = False
+    stale = 0
+    spent = 0.0
+    if db_ok:
+        # Versions embedded by a different embedder are invisible to retrieval
+        # until re-embedded (scripts/seed_corpus.py --reembed).
+        stale = await pool.fetchval(
+            "SELECT count(*) FROM document_versions v JOIN documents d ON d.active_version_id = v.id "
+            "WHERE d.status = 'published' AND v.embedding_model IS DISTINCT FROM $1",
+            SETTINGS.embedding_label,
+        )
+        spent = await spend_today_usd(pool)
+    s = SETTINGS
+    mock_llm = s.llm_provider == "mock"
+    mock_emb = s.embedding_provider == "mock"
     return {
         "pipelineVersion": PIPELINE_VERSION,
         "modelId": MODEL_ID,
+        "llmProvider": s.llm_provider,
+        "llmModel": s.llm_model,
+        "embeddingProvider": s.embedding_provider,
+        "embeddingModel": s.embedding_model,
         "embedder": type(_embedder).__name__,
         "generator": type(_generator).__name__,
         "retrievalTopK": RETRIEVAL_TOP_K,
-        "similarityThreshold": MIN_SIMILARITY,
+        "similarityThreshold": MIN_SIMILARITY if mock_llm else None,
+        "rateLimit": {"perMinute": s.rate_limit_per_minute, "perDay": s.rate_limit_per_day},
+        "dailySpendCapUsd": s.daily_spend_cap_usd,
+        "spentTodayUsd": round(spent, 4),
+        "priceKnown": s.price_in_per_mtok is not None and s.price_out_per_mtok is not None,
+        "staleEmbeddingVersions": stale,
         "healthChecks": [
             {"name": "Postgres", "status": "connected" if db_ok else "unreachable"},
-            {"name": "LLM provider", "status": "not configured (mock mode)"},
-            {"name": "Embedding provider", "status": "not configured (mock mode)"},
+            {
+                "name": "LLM provider",
+                "status": "not configured (mock mode)" if mock_llm else f"configured: {s.llm_provider} / {s.llm_model}",
+            },
+            {
+                "name": "Embedding provider",
+                "status": "not configured (mock mode)"
+                if mock_emb
+                else f"configured: {s.embedding_provider} / {s.embedding_model}",
+            },
         ],
     }
 
@@ -201,7 +257,8 @@ async def get_source(document_id: UUID) -> dict:
     pool = await get_pool()
     doc = await pool.fetchrow(
         """
-        SELECT d.id, d.title, col.title AS collection_title, col.slug AS collection_slug,
+        SELECT d.id, d.title, d.source_url, d.license,
+               col.title AS collection_title, col.slug AS collection_slug,
                v.id AS version_id, v.version_number
         FROM documents d
         JOIN collections col ON col.id = d.collection_id
@@ -224,6 +281,8 @@ async def get_source(document_id: UUID) -> dict:
         "title": doc["title"],
         "collectionTitle": doc["collection_title"],
         "collectionSlug": doc["collection_slug"],
+        "sourceUrl": doc["source_url"],
+        "license": doc["license"],
         "versionNumber": doc["version_number"],
         "chunks": [
             {
@@ -258,13 +317,24 @@ def _build_citations(cited_chunk_ids: list[str], hits: list[ChunkHit]) -> list[C
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest) -> ChatResponse:
+async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     request_id = req.clientRequestId or str(uuid.uuid4())
     message = req.message.strip()
     if not message or len(message) > 2000:
         raise HTTPException(status_code=400, detail="message must be 1-2000 characters")
 
     pool = await get_pool()
+    actor = actor_hash(_client_ip(request), SETTINGS.rate_limit_salt)
+    if request.headers.get("x-rate-exempt") != "1":
+        retry_after = await check_rate_limit(
+            pool, actor, SETTINGS.rate_limit_per_minute, SETTINGS.rate_limit_per_day
+        )
+        if retry_after is not None:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Terlalu banyak pertanyaan. Coba lagi dalam {_human_wait(retry_after)}.",
+                headers={"Retry-After": str(retry_after)},
+            )
     collection = await pool.fetchrow(
         "SELECT id, slug FROM collections WHERE slug = $1 AND visibility = 'public' AND status = 'published'",
         req.collectionSlug,
@@ -277,18 +347,34 @@ async def chat(req: ChatRequest) -> ChatResponse:
     key = cache_key(message, collection_id, fingerprint, PIPELINE_VERSION)
 
     cached = await get_cached(key)
-    if cached is not None:
-        await _log_query_event(pool, collection_id, "cache_hit", 0, 0, 0)
+    if cached is not None:  # free: no provider call, so allowed even over the spend cap
+        await _log_query_event(pool, collection_id, "cache_hit", 0, 0, 0, actor)
         return ChatResponse(**cached, cacheHit=True, requestId=request_id)
 
+    cap = SETTINGS.daily_spend_cap_usd
+    if cap is not None and await spend_today_usd(pool) >= cap:
+        # PRD K-08: fail closed when the budget is exhausted, don't degrade silently.
+        raise HTTPException(status_code=503, detail="Batas biaya AI harian tercapai. Coba lagi besok.")
+
     start = time.monotonic()
-    hits = await _retriever.retrieve(message, collection["slug"], RETRIEVAL_TOP_K)
-    raw_answer = await _generator.answer(message, hits)
+    try:
+        hits = await _retriever.retrieve(message, collection["slug"], RETRIEVAL_TOP_K)
+        if SETTINGS.min_similarity is not None:
+            hits = [h for h in hits if h.score >= SETTINGS.min_similarity]
+        # Generators abstain without a provider call when hits is empty.
+        raw_answer = await _generator.answer(message, hits)
+    except ProviderUnavailable as e:
+        log.warning("provider unavailable: %s", e)
+        raise HTTPException(status_code=503, detail="Layanan AI sedang tidak tersedia. Coba lagi sebentar.") from e
     answer = validate_citations(raw_answer, hits)
     latency_ms = int((time.monotonic() - start) * 1000)
 
-    input_tokens = max(1, len(message.split()))
-    output_tokens = max(1, len(answer.text.split()))
+    # Provider-reported usage; word counts only as a stand-in for the mock.
+    input_tokens = raw_answer.input_tokens or max(1, len(message.split()))
+    output_tokens = raw_answer.output_tokens or max(1, len(answer.text.split()))
+    cost = estimate_cost(
+        raw_answer.input_tokens, raw_answer.output_tokens, SETTINGS.price_in_per_mtok, SETTINGS.price_out_per_mtok
+    )
 
     payload = {
         "answer": answer.text,
@@ -299,20 +385,36 @@ async def chat(req: ChatRequest) -> ChatResponse:
     await set_cached(key, collection_id, message, PIPELINE_VERSION, payload)
     await _log_query_event(
         pool, collection_id, "answered" if answer.grounded else "abstained",
-        latency_ms, input_tokens, output_tokens,
+        latency_ms, input_tokens, output_tokens, actor, cost,
     )
 
     return ChatResponse(**payload, cacheHit=False, requestId=request_id)
 
 
+def _human_wait(seconds: int) -> str:
+    if seconds < 90:
+        return f"{seconds} detik"
+    if seconds < 5400:
+        return f"{round(seconds / 60)} menit"
+    return f"{round(seconds / 3600)} jam"
+
+
 async def _log_query_event(
-    pool, collection_id: str, status: str, latency_ms: int, input_tokens: int, output_tokens: int
+    pool,
+    collection_id: str,
+    status: str,
+    latency_ms: int,
+    input_tokens: int,
+    output_tokens: int,
+    actor: str | None = None,
+    cost_usd: float = 0.0,
 ) -> None:
     await pool.execute(
         """
-        INSERT INTO query_events (collection_id, pipeline_version, model_id, latency_ms,
+        INSERT INTO query_events (collection_id, actor_hash, pipeline_version, model_id, latency_ms,
                                    input_tokens, output_tokens, estimated_cost_usd, status)
-        VALUES ($1, $2, $3, $4, $5, $6, 0, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         """,
-        collection_id, PIPELINE_VERSION, MODEL_ID, latency_ms, input_tokens, output_tokens, status,
+        collection_id, actor, PIPELINE_VERSION, MODEL_ID, latency_ms, input_tokens, output_tokens,
+        cost_usd, status,
     )

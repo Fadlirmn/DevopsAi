@@ -3,6 +3,12 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+# Fixed texts shown instead of any model output when an answer is not grounded.
+ABSTAIN_TEXT = (
+    "Maaf, dokumen di koleksi ini tidak membahas pertanyaan itu, jadi saya tidak bisa menjawabnya."
+)
+REFUSAL_TEXT = "Maaf, pertanyaan ini tidak bisa dijawab di sini."
+
 
 @dataclass
 class ChunkHit:
@@ -20,6 +26,9 @@ class GroundedAnswer:
     text: str
     cited_chunk_ids: list[str]
     grounded: bool
+    # Provider-reported token usage when available (0 = unknown / mock).
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 class Embedder(Protocol):

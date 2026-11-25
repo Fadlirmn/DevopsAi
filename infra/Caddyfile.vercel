@@ -1,0 +1,25 @@
+# Used by compose.vercel.yaml (Vercel + VPS demo). Same app site as Caddyfile,
+# plus the RAG API on its own hostname for the Vercel-hosted BFF to call.
+# RAG rejects every request without x-internal-key (RAG_API_KEY), and Caddy
+# itself adds no auth — never run this overlay without RAG_API_KEY.
+
+{$DOMAIN:knowledge.example.com} {
+    encode zstd gzip
+    header {
+      X-Content-Type-Options nosniff
+      Referrer-Policy strict-origin-when-cross-origin
+      X-Frame-Options DENY
+    }
+    reverse_proxy web:3000
+}
+
+{$RAG_DOMAIN} {
+    encode zstd gzip
+    header {
+      X-Content-Type-Options nosniff
+      -Server
+    }
+    # Admin endpoints stay reachable only through the BFF's verified session,
+    # but the key check in the RAG service is what actually guards them.
+    reverse_proxy rag:8000
+}

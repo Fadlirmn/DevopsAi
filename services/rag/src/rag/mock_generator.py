@@ -6,11 +6,8 @@ the citation-validation and abstain paths (PRD.md §6, K-06) without calling
 a paid LLM.
 """
 
-from .interfaces import ChunkHit, GroundedAnswer
+from .interfaces import ABSTAIN_TEXT, ChunkHit, GroundedAnswer
 
-ABSTAIN_TEXT = (
-    "I don't have enough evidence in this collection to answer that confidently."
-)
 MIN_SIMILARITY = 0.18  # tuned for the hashing mock only — not a real relevance threshold
 
 

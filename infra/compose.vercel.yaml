@@ -1,0 +1,18 @@
+# Overlay for the Vercel + VPS demo (PRD.md §6): the SvelteKit app runs on
+# Vercel and calls this VPS's RAG API over HTTPS at RAG_DOMAIN.
+#
+#   docker compose -f infra/compose.yaml -f infra/compose.vercel.yaml up -d --build
+#
+# The RAG API has no user auth of its own, so RAG_API_KEY is mandatory here:
+# every request without the key gets 401. Set the same value in Vercel's env.
+services:
+  rag:
+    environment:
+      RAG_API_KEY: ${RAG_API_KEY:?RAG_API_KEY wajib diisi saat RAG dibuka untuk Vercel (openssl rand -hex 32)}
+
+  caddy:
+    environment:
+      RAG_DOMAIN: ${RAG_DOMAIN:?RAG_DOMAIN wajib diisi, mis. rag.domain-kamu.com}
+    volumes:
+      - ./Caddyfile.vercel:/etc/caddy/Caddyfile:ro
+    networks: [edge, backend]

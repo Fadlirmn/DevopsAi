@@ -20,7 +20,14 @@
 		page: number | null;
 		excerpt: string;
 	};
-	type ChatResult = { answer: string; citations: Citation[]; grounded: boolean; cacheHit: boolean };
+	type ChatResult = {
+		answer: string;
+		citations: Citation[];
+		grounded: boolean;
+		cacheHit: boolean;
+		/** Vercel demo-mode fixture (backend unreachable) — never a live answer. */
+		demo?: boolean;
+	};
 	type Turn = { q: string; result?: ChatResult; error?: string; loading?: boolean };
 	type Chat = {
 		id: string;
@@ -415,6 +422,11 @@
 										</button>
 									</div>
 								{:else if turn.result}
+									{#if turn.result.demo}
+										<div class="demo-banner" role="note">
+											Mode demo — server AI sedang tidak terjangkau. Ini contoh jawaban tersimpan.
+										</div>
+									{/if}
 									<!-- prettier-ignore -->
 									<p class="ans">{#each segments(turn.result.answer) as seg, si (si)}{#if typeof seg === 'number'}<button class="cite" aria-label={`Sumber ${seg}`} onclick={() => hl(ti, seg)}>{seg}</button>{:else}{seg}{/if}{/each}</p>
 									{#if turn.result.citations.length}
@@ -433,7 +445,7 @@
 													class:on={activeSource === `${ti}-${c.marker}`}
 												>
 													<!-- prettier-ignore -->
-													<b><a href={`/sources/${c.documentId}?chunk=${c.chunkId}`}>{c.heading ?? c.title}</a></b><small>
+													<b>{#if c.documentId}<a href={`/sources/${c.documentId}?chunk=${c.chunkId}`}>{c.heading ?? c.title}</a>{:else}{c.heading ?? c.title}{/if}</b><small>
 														{c.heading ? `${c.title} · ` : ''}{c.page ? `hal. ${c.page}` : ''}
 													</small>
 													<!-- prettier-ignore -->

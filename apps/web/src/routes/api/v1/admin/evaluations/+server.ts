@@ -3,4 +3,4 @@
 import type { RequestHandler } from './$types';
 import { proxyToRag } from '#lib/server/rag';
 
-export const GET: RequestHandler = () => proxyToRag('/admin/evaluations');
+export const GET: RequestHandler = (event) => proxyToRag(event, '/admin/evaluations');

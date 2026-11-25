@@ -7,7 +7,23 @@
 	import type { PageProps } from './$types';
 
 	type Health = { name: string; status: string };
-	type Settings = { modelId: string; embedder: string; generator: string; healthChecks: Health[] };
+	type Settings = {
+		modelId: string;
+		llmProvider: string;
+		llmModel: string;
+		embeddingProvider: string;
+		embeddingModel: string;
+		staleEmbeddingVersions: number;
+		healthChecks: Health[];
+	};
+	// Key material never leaves the server: we only show which provider/model is active.
+	function providerRow(provider: string | undefined, model: string | undefined) {
+		if (!settings)
+			return { small: 'RAG service tidak terjangkau', badge: { cls: 'er', text: 'error' } };
+		if (provider === 'mock')
+			return { small: 'mock · tanpa API key', badge: { cls: 'wn', text: 'mock' } };
+		return { small: `${provider} · ${model}`, badge: { cls: 'ok', text: 'aktif' } };
+	}
 
 	let { data }: PageProps = $props();
 	let settings = $derived(data.settings as Settings | null);
@@ -19,14 +35,17 @@
 		{
 			n: 'Model API',
 			label: 'Model API',
-			small: settings ? `${settings.modelId} · belum ada kunci` : 'RAG service tidak terjangkau',
-			badge: settings ? { cls: 'wn', text: 'mock' } : { cls: 'er', text: 'error' }
+			...providerRow(settings?.llmProvider, settings?.llmModel)
 		},
 		{
 			n: 'Embedding',
 			label: 'Embedding',
-			small: settings ? `${settings.embedder} · belum ada kunci` : 'RAG service tidak terjangkau',
-			badge: settings ? { cls: 'wn', text: 'mock' } : { cls: 'er', text: 'error' }
+			...providerRow(settings?.embeddingProvider, settings?.embeddingModel),
+			...(settings?.staleEmbeddingVersions
+				? {
+						badge: { cls: 'er', text: `${settings.staleEmbeddingVersions} dok perlu embed ulang` }
+					}
+				: {})
 		},
 		{
 			n: 'Database vektor',
@@ -67,7 +86,7 @@
 			return;
 		}
 		editing = null;
-		say('Belum bisa disimpan dari UI — ubah infra/.env lalu restart', 3000);
+		say('Ganti lewat infra/.env (LLM_* / EMBEDDING_*) lalu restart — lihat README', 3500);
 	}
 </script>
 
