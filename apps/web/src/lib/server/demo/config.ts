@@ -24,6 +24,8 @@ const KNOWN_PRICES: Record<string, [number, number]> = {
 export type DemoConfig = {
 	provider: Provider;
 	model: string;
+	/** Tried once when the primary model is overloaded (503/429/529). */
+	fallbackModel: string | undefined;
 	apiKey: string | undefined;
 	baseUrl: string | undefined;
 	effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -58,6 +60,7 @@ export function demoConfig(): DemoConfig | null {
 	cached = {
 		provider: provider as Provider,
 		model,
+		fallbackModel: env('LLM_FALLBACK_MODEL'),
 		apiKey,
 		baseUrl,
 		effort: (env('LLM_EFFORT') ?? 'low') as DemoConfig['effort'],

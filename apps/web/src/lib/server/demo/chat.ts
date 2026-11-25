@@ -23,6 +23,8 @@ import {
 import { complete, ProviderError, type Completion } from './providers';
 import { addSpend, getCachedAnswer, hitRateLimit, setCachedAnswer, spentToday } from './limits';
 import index from './nist-index.json';
+import { DEMO_FALLBACK } from '../rag';
+import { demoAnswer } from '../demo-fixture';
 
 export type DemoChunk = {
 	chunkId: string;
@@ -182,6 +184,8 @@ export async function serverlessChat(event: RequestEvent, body: unknown): Promis
 		await addSpend(cost(c, calls)); // tokens already used still count
 		if (e instanceof ProviderError) {
 			console.warn('[demo] provider unavailable:', e.reason, e.message.slice(0, 200));
+			// Provider down/overloaded: a labelled stored example beats an error in a demo.
+			if (DEMO_FALLBACK) return json(demoAnswer(requestId));
 			return json(
 				{ detail: 'Layanan AI sedang tidak tersedia. Coba lagi sebentar.' },
 				{ status: 503 }

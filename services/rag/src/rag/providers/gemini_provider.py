@@ -35,7 +35,15 @@ def _wrap(e: Exception) -> ProviderUnavailable:
 
 
 def _client(api_key: str, timeout_s: float) -> genai.Client:
-    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=int(timeout_s * 1000)))
+    # The SDK only retries when retry_options is set; Gemini's 503 "high demand"
+    # spikes are short, so retry with backoff (~1 s, 2 s) before giving up.
+    return genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            timeout=int(timeout_s * 1000),
+            retry_options=types.HttpRetryOptions(attempts=3, initial_delay=1, max_delay=4),
+        ),
+    )
 
 
 class GeminiGenerator:

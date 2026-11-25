@@ -2,7 +2,7 @@
 // One entry point: complete(system, user, json?) -> text + token usage.
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+import { ApiError, GoogleGenAI } from '@google/genai';
 import { ANSWER_SCHEMA } from './grounding';
 import type { DemoConfig } from './config';
 
@@ -69,10 +69,11 @@ async function viaAnthropic(
 		if (e instanceof ProviderError) throw e;
 		if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)
 			throw new ProviderError('auth', e.message);
-		if (e instanceof Anthropic.RateLimitError) throw new ProviderError('rate_limited', e.message);
+		if (e instanceof Anthropic.RateLimitError) throw new ProviderError('overloaded', e.message);
 		if (e instanceof Anthropic.BadRequestError) throw new ProviderError('bad_request', e.message);
 		if (e instanceof Anthropic.APIConnectionError) throw new ProviderError('network', e.message);
-		if (e instanceof Anthropic.APIError) throw new ProviderError('upstream', e.message);
+		if (e instanceof Anthropic.APIError)
+			throw new ProviderError(Number(e.status) >= 500 ? 'overloaded' : 'upstream', e.message);
 		throw e;
 	}
 }
@@ -121,10 +122,11 @@ async function viaOpenAI(
 	} catch (e) {
 		if (e instanceof ProviderError) throw e;
 		if (e instanceof OpenAI.AuthenticationError) throw new ProviderError('auth', e.message);
-		if (e instanceof OpenAI.RateLimitError) throw new ProviderError('rate_limited', e.message);
+		if (e instanceof OpenAI.RateLimitError) throw new ProviderError('overloaded', e.message);
 		if (e instanceof OpenAI.BadRequestError) throw new ProviderError('bad_request', e.message);
 		if (e instanceof OpenAI.APIConnectionError) throw new ProviderError('network', e.message);
-		if (e instanceof OpenAI.APIError) throw new ProviderError('upstream', e.message);
+		if (e instanceof OpenAI.APIError)
+			throw new ProviderError(Number(e.status) >= 500 ? 'overloaded' : 'upstream', e.message);
 		throw e;
 	}
 }
@@ -135,7 +137,15 @@ async function viaGemini(
 	user: string,
 	json: boolean
 ): Promise<Completion> {
-	gemini ??= new GoogleGenAI({ apiKey: c.apiKey, httpOptions: { timeout: c.timeoutMs } });
+	// The SDK only retries when retryOptions is set. 503 "high demand" spikes
+	// are common and short, so retry with backoff (~1 s, 2 s) before giving up.
+	gemini ??= new GoogleGenAI({
+		apiKey: c.apiKey,
+		httpOptions: {
+			timeout: c.timeoutMs,
+			retryOptions: { attempts: 3, initialDelay: 1, maxDelay: 4 }
+		}
+	});
 	try {
 		const resp = await gemini.models.generateContent({
 			model: c.model,
@@ -160,17 +170,31 @@ async function viaGemini(
 		};
 	} catch (e) {
 		if (e instanceof ProviderError) throw e;
-		throw new ProviderError('upstream', e instanceof Error ? e.message : String(e));
+		const status = e instanceof ApiError ? e.status : 0;
+		const msg = e instanceof Error ? e.message : String(e);
+		throw new ProviderError(status === 429 || status >= 500 ? 'overloaded' : 'upstream', msg);
 	}
 }
 
-export function complete(
+function once(c: DemoConfig, system: string, user: string, json: boolean): Promise<Completion> {
+	if (c.provider === 'anthropic') return viaAnthropic(c, system, user, json);
+	if (c.provider === 'gemini') return viaGemini(c, system, user, json);
+	return viaOpenAI(c, system, user, json);
+}
+
+/** The SDKs retry transient errors themselves; if the model is still
+ * overloaded after that, try LLM_FALLBACK_MODEL once. */
+export async function complete(
 	c: DemoConfig,
 	system: string,
 	user: string,
 	json: boolean
 ): Promise<Completion> {
-	if (c.provider === 'anthropic') return viaAnthropic(c, system, user, json);
-	if (c.provider === 'gemini') return viaGemini(c, system, user, json);
-	return viaOpenAI(c, system, user, json);
+	try {
+		return await once(c, system, user, json);
+	} catch (e) {
+		if (!(e instanceof ProviderError) || e.reason !== 'overloaded' || !c.fallbackModel) throw e;
+		console.warn(`[demo] ${c.model} overloaded, trying ${c.fallbackModel}`);
+		return once({ ...c, model: c.fallbackModel }, system, user, json);
+	}
 }
