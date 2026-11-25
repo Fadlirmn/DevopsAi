@@ -53,8 +53,8 @@
 
 	{#if coverageGaps.length === 0}
 		<p style="color: var(--fg-muted);">
-			No abstained questions recorded yet — ask something off-topic in the <a href="/demo"
-				>demo</a
+			No abstained questions recorded yet — ask something off-topic in the <a href="/"
+				>chat</a
 			> to populate this.
 		</p>
 	{:else}

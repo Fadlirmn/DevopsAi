@@ -60,8 +60,8 @@ Primary journeys: (a) visitor asks how to debug a 503, receives cited procedural
 ## 5. Experience / UI specification
 SvelteKit 5 + TypeScript + Tailwind. Responsive, pure dark default with optional light mode; restrained 60/30/10 color proportion. Pages:
 
-1. `/`: showcase summary, architecture diagram, benchmark metrics, link to demo.
-2. `/demo`: collections selector, sample questions, chat pane, sources drawer, safety notice, retry and clear session.
+1. `/`: the chat itself (home page): collections selector, sample questions, chat pane, sources drawer, safety notice, retry and clear session. `/demo` redirects here. The nav shows the Admin menu only for a verified admin session; everyone else sees Chat + an "Admin login" link. (The showcase summary/architecture/metrics page was dropped in favor of putting the chat first.)
+2. *(merged into `/`)*
 3. `/sources/[id]`: metadata, permitted document preview, page/section anchor, highlight cited chunks.
 4. `/login`: Firebase Google sign-in for allowlisted admin (no signup workflow).
 5. `/admin/documents`: upload, versions, ingestion timeline, visibility/publish controls.

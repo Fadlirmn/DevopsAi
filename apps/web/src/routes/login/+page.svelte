@@ -23,7 +23,8 @@
 			body: JSON.stringify({ idToken })
 		});
 		if (res.ok) {
-			await goto(nextPath());
+			// invalidateAll so the root layout re-reads isAdmin and shows the Admin menu.
+			await goto(nextPath(), { invalidateAll: true });
 			return;
 		}
 		if (res.status === 403) {
@@ -67,7 +68,7 @@
 <h1>Admin login</h1>
 <p style="color: var(--fg-muted); margin: 8px 0 20px; max-width: 48ch;">
 	Access is limited to one allowlisted Firebase account. Public visitors don't need to sign in —
-	the <a href="/demo">demo</a> is open already.
+	the <a href="/">chat</a> is open already.
 </p>
 
 <div class="card" style="max-width: 360px;">

@@ -9,7 +9,7 @@
 	async function logout() {
 		await signOut(getFirebaseAuth()).catch(() => {});
 		await fetch('/api/v1/auth/logout', { method: 'POST' });
-		await goto('/login');
+		await goto('/', { invalidateAll: true });
 	}
 </script>
 

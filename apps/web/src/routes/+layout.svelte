@@ -5,7 +5,7 @@
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
+	let { data, children }: LayoutProps = $props();
 
 	let theme = $state<'dark' | 'light'>('dark');
 
@@ -29,24 +29,17 @@
 		applyTheme(stored === 'light' ? 'light' : 'dark');
 	});
 
-	const NAV = [
-		{
-			label: 'Public',
-			links: [
-				{ href: '/', text: 'Overview' },
-				{ href: '/demo', text: 'Demo' }
-			]
-		},
-		{
-			label: 'Admin',
-			links: [
-				{ href: '/login', text: 'Login' },
-				{ href: '/admin/documents', text: 'Documents' },
-				{ href: '/admin/evaluations', text: 'Evaluations' },
-				{ href: '/admin/settings', text: 'Settings' }
-			]
-		}
-	];
+	const PUBLIC_GROUP = { label: 'Knowledge base', links: [{ href: '/', text: 'Chat' }] };
+	const ADMIN_GROUP = {
+		label: 'Admin',
+		links: [
+			{ href: '/admin/documents', text: 'Documents' },
+			{ href: '/admin/evaluations', text: 'Evaluations' },
+			{ href: '/admin/settings', text: 'Settings' }
+		]
+	};
+	// Admin menu only for a verified admin session (see +layout.server.ts).
+	let nav = $derived(data.isAdmin ? [PUBLIC_GROUP, ADMIN_GROUP] : [PUBLIC_GROUP]);
 </script>
 
 <svelte:head>
@@ -61,15 +54,11 @@
 				<span class="brand-tag">dev build</span>
 			</div>
 
-			{#each NAV as group (group.label)}
+			{#each nav as group (group.label)}
 				<div class="nav-group">
 					<div class="nav-label">{group.label}</div>
 					{#each group.links as link (link.href)}
-						<a
-							class="nav-link"
-							class:active={page.url.pathname === link.href}
-							href={link.href}
-						>
+						<a class="nav-link" class:active={page.url.pathname === link.href} href={link.href}>
 							{link.text}
 						</a>
 					{/each}
@@ -77,6 +66,11 @@
 			{/each}
 
 			<div class="rail-foot">
+				{#if !data.isAdmin}
+					<a class="nav-link" href="/login" class:active={page.url.pathname === '/login'}>
+						Admin login
+					</a>
+				{/if}
 				<button
 					class="theme-btn"
 					type="button"

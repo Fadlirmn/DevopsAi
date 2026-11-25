@@ -58,7 +58,7 @@ cp infra/.env.example infra/.env        # set POSTGRES_PASSWORD: openssl rand -h
 docker compose -f infra/compose.yaml up -d --build
 docker compose -f infra/compose.yaml run --rm rag python scripts/seed_dev.py   # demo data (optional on a VPS)
 ```
-- **Local:** the example defaults (`DOMAIN=:80`, `HTTP_PORT=8080`) serve plain HTTP at `http://localhost:8080` → `/demo`.
+- **Local:** the example defaults (`DOMAIN=:80`, `HTTP_PORT=8080`) serve plain HTTP at `http://localhost:8080` (the chat is the home page).
 - **VPS:** in `infra/.env` set `DOMAIN=your.domain` (DNS A/AAAA pointing at the VPS), `HTTP_PORT=80`, `HTTPS_PORT=443`, then `chmod 600 infra/.env`. Caddy gets the TLS certificate automatically. Firewall: open only 80/443 (+ SSH). See `docs/DEPLOY_VPS.md`.
 - **Admin:** fill the `FIREBASE_*`/`ADMIN_UIDS` values in `infra/.env` (see "Admin login" below), then `up -d` again. They're read at container start, so there's no rebuild. Left empty, the demo works and `/admin` stays locked.
 - **Update after `git pull`:** `docker compose -f infra/compose.yaml up -d --build`.
@@ -87,7 +87,7 @@ cd apps/web && pnpm install
 cp .env.example .env   # fill real Firebase values to actually sign in — see below
 RAG_SERVICE_URL=http://127.0.0.1:8000 pnpm dev
 ```
-Open `http://localhost:5173/demo`, collection `incident-playbooks` is pre-seeded. The embedder/generator are mocks (`services/rag/src/rag/mock_*.py`) — swap them for real provider adapters once one is pinned (PRD.md §7); nothing else in the request path changes.
+Open `http://localhost:5173/` (the chat), collection `incident-playbooks` is pre-seeded. The embedder/generator are mocks (`services/rag/src/rag/mock_*.py`) — swap them for real provider adapters once one is pinned (PRD.md §7); nothing else in the request path changes.
 
 ### Admin login needs a real Firebase project
 `/login` and everything under `/admin/*` require a real Firebase project (free tier is enough):
