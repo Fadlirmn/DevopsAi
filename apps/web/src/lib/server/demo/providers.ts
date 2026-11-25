@@ -159,12 +159,11 @@ function geminiClient(c: DemoConfig): GoogleGenAI {
 	});
 }
 
-/** Gemini 3.x takes thinkingLevel, 2.x a thinkingBudget; unknown ids get neither. */
+/** 2.x takes a thinkingBudget; 3.x and aliases like gemini-flash-latest take
+ * thinkingLevel. Without it they think at full length and blow the deadline. */
 function geminiThinking(model: string) {
-	const major = Number(model.match(/^gemini-(\d+)/)?.[1] ?? NaN);
-	if (major >= 3) return { thinkingLevel: ThinkingLevel.LOW };
-	if (major === 2) return { thinkingBudget: 0 };
-	return undefined;
+	if (/^gemini-2\b/.test(model)) return { thinkingBudget: 0 };
+	return { thinkingLevel: ThinkingLevel.LOW };
 }
 
 async function viaGemini(
@@ -219,6 +218,8 @@ async function viaGemini(
 		// 429 is either a quota/billing limit on this key or a temporary rate spike.
 		if (status === 429)
 			throw new ProviderError(/quota|billing/i.test(msg) ? 'quota' : 'overloaded', msg);
+		// The SDK sends our timeout as X-Server-Timeout; Gemini answers 504 when it runs out.
+		if (status === 504 || /DEADLINE_EXCEEDED/.test(msg)) throw new ProviderError('timeout', msg);
 		if (status >= 500) throw new ProviderError('overloaded', msg);
 		if (status === 404) throw new ProviderError('not_found', msg);
 		if (status === 401 || status === 403) throw new ProviderError('auth', msg);
