@@ -30,6 +30,7 @@ export type Completion = {
 type Budget = { timeoutMs: number; retries: number };
 
 const MIN_CALL_MS = 4_000; // below this a call can't realistically finish
+const RETRY_PAUSE_MS = 3_000; // wait before a second round when every model was overloaded
 
 // Models that accept the server-side refusal fallback (`fallbacks: "default"`).
 const FALLBACK_MODELS = new Set([
@@ -265,10 +266,17 @@ export async function complete(
 	let lastError: unknown = new ProviderError('timeout', 'no time left for an AI call');
 	const left = () => deadline - Date.now();
 
-	const attempt = async (model: string, force = false): Promise<Completion | null> => {
-		if (tried.includes(model) || left() < MIN_CALL_MS) return null;
-		if (!force && (sickUntil.get(model) ?? 0) > Date.now()) return null;
-		tried.push(model);
+	// force: ignore the cool-down and take all the time left. again: a second
+	// round over models that already failed this request.
+	const attempt = async (
+		model: string,
+		force = false,
+		again = false
+	): Promise<Completion | null> => {
+		if (left() < MIN_CALL_MS) return null;
+		if (!again && tried.includes(model)) return null;
+		if (!force && !again && (sickUntil.get(model) ?? 0) > Date.now()) return null;
+		if (!again) tried.push(model);
 		const remaining = left() - 500;
 		// A model may use at most half of what's left (all of it only on the
 		// forced last try), so a slow model can't starve the fallbacks. Within
@@ -306,5 +314,66 @@ export async function complete(
 		const r = await attempt(c.model, true);
 		if (r) return r;
 	}
+	// Every model said "high demand" fast and plenty of time is left: those
+	// spikes usually pass within seconds, so wait a little and go round once more.
+	const isOverload = lastError instanceof ProviderError && lastError.reason === 'overloaded';
+	if (isOverload && left() > RETRY_PAUSE_MS + 2 * MIN_CALL_MS) {
+		console.warn(`[demo] all models overloaded, retrying in ${RETRY_PAUSE_MS / 1000}s`);
+		await new Promise((r) => setTimeout(r, RETRY_PAUSE_MS));
+		for (const model of [...tried]) {
+			const r = await attempt(model, false, true);
+			if (r) return r;
+		}
+	}
 	throw lastError;
+}
+
+export type ModelCheck = { model: string; ok: boolean; reason?: string };
+
+const CHECK_MS = 5_000;
+
+/** Free check (model metadata, no tokens): does this key see this model? */
+async function checkOne(c: DemoConfig, model: string): Promise<ModelCheck> {
+	try {
+		if (c.provider === 'anthropic') {
+			anthropic ??= new Anthropic({ apiKey: c.apiKey });
+			await anthropic.models.retrieve(model, {}, { timeout: CHECK_MS, maxRetries: 0 });
+		} else if (c.provider === 'gemini') {
+			gemini ??= geminiClient(c);
+			await gemini.models.get({ model, config: { httpOptions: { timeout: CHECK_MS } } });
+		} else {
+			openai ??= new OpenAI({ apiKey: c.apiKey ?? 'not-needed', baseURL: c.baseUrl });
+			try {
+				await openai.models.retrieve(model, { timeout: CHECK_MS, maxRetries: 0 });
+			} catch (e) {
+				// Some OpenAI-compatible servers only implement GET /models.
+				if (c.provider !== 'openai-compatible') throw e;
+				const list = await openai.models.list({ timeout: CHECK_MS, maxRetries: 0 });
+				if (!list.data.some((m) => m.id === model))
+					return { model, ok: false, reason: 'model not found' };
+			}
+		}
+		return { model, ok: true };
+	} catch (e) {
+		const status = Number((e as { status?: unknown }).status) || 0;
+		const msg = e instanceof Error ? e.message : String(e);
+		const reason =
+			status === 401 || status === 403 || (status === 400 && /api.?key/i.test(msg))
+				? 'invalid key'
+				: status === 404
+					? 'model not found'
+					: status === 429
+						? 'quota / rate limit'
+						: status >= 500
+							? 'provider down'
+							: status
+								? `HTTP ${status}`
+								: 'unreachable';
+		return { model, ok: false, reason };
+	}
+}
+
+/** Checks the configured model and every fallback, in parallel. */
+export function checkModels(c: DemoConfig): Promise<ModelCheck[]> {
+	return Promise.all([c.model, ...c.fallbackModels].map((m) => checkOne(c, m)));
 }

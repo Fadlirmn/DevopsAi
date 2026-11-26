@@ -7,52 +7,94 @@
 	import type { PageProps } from './$types';
 
 	type Health = { name: string; status: string };
+	type ModelCheck = { model: string; ok: boolean; reason?: string };
 	type Settings = {
+		/** Set by the serverless demo (Vercel without a VPS); absent from the VPS. */
+		mode?: 'serverless';
 		modelId: string;
 		llmProvider: string;
 		llmModel: string;
+		fallbackModels?: string[];
 		embeddingProvider: string;
 		embeddingModel: string;
 		staleEmbeddingVersions: number;
+		redis?: { status: string; host: string | null };
+		modelChecks?: ModelCheck[] | null;
 		healthChecks: Health[];
 	};
+	const health = (name: string) => settings?.healthChecks.find((h) => h.name === name)?.status;
+
 	// Key material never leaves the server: we only show which provider/model is active.
 	function providerRow(provider: string | undefined, model: string | undefined) {
 		if (!settings)
-			return { small: 'RAG service tidak terjangkau', badge: { cls: 'er', text: 'error' } };
+			return { small: 'Server AI tidak terjangkau', badge: { cls: 'er', text: 'error' } };
 		if (provider === 'mock')
 			return { small: 'mock · tanpa API key', badge: { cls: 'wn', text: 'mock' } };
 		return { small: `${provider} · ${model}`, badge: { cls: 'ok', text: 'aktif' } };
 	}
 
+	function llmRow() {
+		const llm = health('LLM provider') ?? '';
+		if (settings?.mode === 'serverless' && llm.startsWith('error'))
+			return { small: llm.slice('error: '.length), badge: { cls: 'er', text: 'error' } };
+		const row = providerRow(settings?.llmProvider, settings?.llmModel);
+		const fb = settings?.fallbackModels ?? [];
+		return fb.length ? { ...row, small: `${row.small} · cadangan: ${fb.join(', ')}` } : row;
+	}
+
+	function redisRow() {
+		const r = settings?.redis;
+		if (r?.status === 'connected')
+			return {
+				small: `${r.host} · rate limit, cache, batas biaya`,
+				badge: { cls: 'ok', text: 'ok' }
+			};
+		if (r?.status === 'not configured')
+			return {
+				small: 'KV_REST_API_URL / KV_REST_API_TOKEN kosong · limit per instance saja',
+				badge: { cls: 'wn', text: 'belum diatur' }
+			};
+		return {
+			small: `${r?.host ?? '?'} · tidak terjangkau atau token salah`,
+			badge: { cls: 'er', text: 'error' }
+		};
+	}
+
 	let { data }: PageProps = $props();
 	let settings = $derived(data.settings as Settings | null);
-	let pg = $derived(
-		settings?.healthChecks.find((h) => h.name === 'Postgres')?.status ?? 'unreachable'
-	);
+	let serverless = $derived(settings?.mode === 'serverless');
+	let pg = $derived(health('Postgres') ?? 'unreachable');
 
 	let rows = $derived([
-		{
-			n: 'Model API',
-			label: 'Model API',
-			...providerRow(settings?.llmProvider, settings?.llmModel)
-		},
-		{
-			n: 'Embedding',
-			label: 'Embedding',
-			...providerRow(settings?.embeddingProvider, settings?.embeddingModel),
-			...(settings?.staleEmbeddingVersions
-				? {
-						badge: { cls: 'er', text: `${settings.staleEmbeddingVersions} dok perlu embed ulang` }
-					}
-				: {})
-		},
-		{
-			n: 'Database vektor',
-			label: 'URL database vektor',
-			small: 'db:5432 · jaringan internal',
-			badge: pg === 'connected' ? { cls: 'ok', text: 'ok' } : { cls: 'er', text: 'error' }
-		},
+		{ n: 'Model API', label: 'Model API', ...llmRow() },
+		serverless
+			? {
+					n: 'Embedding',
+					label: 'Retrieval',
+					small: `BM25 · ${settings?.embeddingModel} · tanpa embedding`,
+					badge: { cls: 'ok', text: 'ok' }
+				}
+			: {
+					n: 'Embedding',
+					label: 'Embedding',
+					...providerRow(settings?.embeddingProvider, settings?.embeddingModel),
+					...(settings?.staleEmbeddingVersions
+						? {
+								badge: {
+									cls: 'er',
+									text: `${settings.staleEmbeddingVersions} dok perlu embed ulang`
+								}
+							}
+						: {})
+				},
+		serverless
+			? { n: 'Redis', label: 'Redis (Upstash)', ...redisRow() }
+			: {
+					n: 'Database vektor',
+					label: 'URL database vektor',
+					small: 'db:5432 · jaringan internal',
+					badge: pg === 'connected' ? { cls: 'ok', text: 'ok' } : { cls: 'er', text: 'error' }
+				},
 		{
 			n: 'Firebase',
 			label: 'Firebase Auth',
@@ -68,9 +110,23 @@
 	let invalid = $state(false);
 
 	async function test(n: string) {
+		if (n === 'Model API' && serverless) {
+			// Asks the provider whether the key sees each model (free, no tokens).
+			say('Model API: mengecek…');
+			const res = await fetch('/api/v1/admin/settings?test=1').catch(() => null);
+			const s = res?.ok ? ((await res.json()) as Settings) : null;
+			const checks = s?.modelChecks;
+			if (!checks)
+				return say(`Model API: ${s ? (health('LLM provider') ?? 'error') : 'gagal'}`, 4000);
+			say(
+				checks.map((c) => `${c.model}: ${c.ok ? 'ok' : c.reason}`).join(' · '),
+				checks.every((c) => c.ok) ? 3000 : 6000
+			);
+			return;
+		}
 		await refreshAll();
 		const r = rows.find((x) => x.n === n);
-		say(`${n}: ${r?.badge.text ?? '?'}`);
+		say(`${r?.label ?? n}: ${r?.badge.text ?? '?'}`);
 	}
 
 	function toggleChange(n: string) {
@@ -86,7 +142,12 @@
 			return;
 		}
 		editing = null;
-		say('Ganti lewat infra/.env (LLM_* / EMBEDDING_*) lalu restart — lihat README', 3500);
+		say(
+			serverless
+				? 'Ganti di Vercel → Settings → Environment Variables (LLM_* / KV_REST_API_*) lalu redeploy'
+				: 'Ganti lewat infra/.env (LLM_* / EMBEDDING_*) lalu restart — lihat README',
+			4000
+		);
 	}
 </script>
 

@@ -43,7 +43,7 @@ export type DemoDoc = {
 
 export const DEMO_DOC = index as DemoDoc;
 export const DEMO_SLUG = 'it-ops';
-const TOP_K = 6;
+export const TOP_K = 6;
 const search = new Bm25(DEMO_DOC.chunks.map((c) => `${c.heading ?? ''} ${c.content}`));
 
 export const serverlessDemoEnabled = (): boolean => demoConfig() !== null;

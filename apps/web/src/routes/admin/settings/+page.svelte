@@ -52,9 +52,11 @@
 	}
 
 	function health(h: Health): { cls: string; text: string } {
-		if (h.status === 'connected') return { cls: 'ok', text: 'ok' };
-		if (h.status === 'unreachable') return { cls: 'er', text: 'error' };
-		return { cls: 'wn', text: 'mock' };
+		if (h.status === 'connected' || h.status.startsWith('configured'))
+			return { cls: 'ok', text: 'ok' };
+		if (h.status.startsWith('not configured (mock')) return { cls: 'wn', text: 'mock' };
+		if (h.status === 'not configured') return { cls: 'wn', text: 'belum diatur' };
+		return { cls: 'er', text: 'error' };
 	}
 </script>
 
@@ -112,10 +114,12 @@
 		{#if settings}
 			{#each settings.healthChecks as h (h.name)}
 				{@const s = health(h)}
-				<div class="row"><span>{h.name}</span><span class={`badge ${s.cls}`}>{s.text}</span></div>
+				<div class="row" title={h.status}>
+					<span>{h.name}</span><span class={`badge ${s.cls}`}>{s.text}</span>
+				</div>
 			{/each}
 		{:else}
-			<div class="row"><span>RAG service</span><span class="badge er">tidak terjangkau</span></div>
+			<div class="row"><span>Server AI</span><span class="badge er">tidak terjangkau</span></div>
 		{/if}
 	</div>
 </section>

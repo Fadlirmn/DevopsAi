@@ -103,3 +103,21 @@ export async function setCachedAnswer(
 ): Promise<void> {
 	await redis([['SET', cacheKey(pipeline, q), JSON.stringify(payload), 'EX', 604_800]]);
 }
+
+export type RedisStatus = 'connected' | 'unreachable' | 'not configured';
+
+/** Live check for the admin page: a real PING, not just "the env is set". */
+export async function redisStatus(): Promise<RedisStatus> {
+	if (!DURABLE) return 'not configured';
+	const r = await redis([['PING']]);
+	return r?.[0] === 'PONG' ? 'connected' : 'unreachable';
+}
+
+/** Hostname only (never the token), for display. */
+export function redisHost(): string | null {
+	try {
+		return DURABLE ? new URL(REST_URL).host : null;
+	} catch {
+		return null;
+	}
+}
