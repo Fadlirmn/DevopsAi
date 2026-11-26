@@ -8,13 +8,14 @@ import { DEMO_COLLECTION } from '#lib/server/demo-fixture';
 import { serverlessDemoEnabled } from '#lib/server/demo/chat';
 
 export const GET: RequestHandler = async (event) => {
-	const hasFallback = DEMO_FALLBACK || serverlessDemoEnabled();
+	const serverless = await serverlessDemoEnabled();
+	const hasFallback = DEMO_FALLBACK || serverless;
 	if (RAG_CONFIGURED) {
 		// Runs on page load: with a fallback available a hanging VPS must not stall it.
 		const r = await fetchRag(event, '/collections', {}, hasFallback ? 3_000 : 8_000);
 		if (r && r.status < 500) return toResponse(r);
 	}
-	if (serverlessDemoEnabled())
+	if (serverless)
 		return json([
 			{
 				...DEMO_COLLECTION,

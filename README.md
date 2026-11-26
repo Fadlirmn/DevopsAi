@@ -242,9 +242,18 @@ Prompt, aturan kutipan, dan teks penolakannya sama persis dengan VPS. API key ha
 | `DAILY_SPEND_CAP_USD` | `1` | sangat disarankan untuk demo publik |
 | `RATE_LIMIT_PER_MINUTE` / `RATE_LIMIT_PER_DAY` | `10` / `100` (default) | – |
 | `DEMO_FALLBACK` | `1` | disarankan: kalau provider bermasalah, tetap ada jawaban contoh |
+| `SETTINGS_SECRET` | acak, min. 16 karakter: `openssl rand -base64 32` | untuk ganti model dari web: mengenkripsi API key yang disimpan di Redis. Kalau diganti, key yang tersimpan harus diisi ulang |
 | Firebase (`PUBLIC_FIREBASE_*`, `FIREBASE_PROJECT_ID`, `ADMIN_UIDS`) | | opsional, hanya untuk login admin |
 
 4. **Deploy.** Fungsi chat diberi `maxDuration: 60` detik, karena ada 2 panggilan AI per pertanyaan baru.
+
+**Ganti model dari web** (tanpa redeploy): **Admin → API & Kunci → Model API → Ganti**. Butuh Upstash dan `SETTINGS_SECRET`.
+- Ada preset Gemini, Claude, OpenAI, DeepSeek, OpenRouter, Groq, dan Lainnya (OpenAI-compatible, base URL harus `https://`).
+- Model dicek dulu ke provider (gratis, tanpa token); kalau gagal, tidak disimpan.
+- Disimpan di Redis (`settings:llm`, API key terenkripsi AES-256-GCM) dan **menang atas env**. Semua instance memakainya dalam ±30 detik.
+- API key boleh dikosongkan: dipakai key yang sudah tersimpan untuk provider yang sama, atau `LLM_API_KEY` kalau env memakai provider yang sama.
+- **Kembali ke env** menghapus pengaturan web. Kalau Redis mati atau key tidak bisa dibuka, env yang dipakai.
+- Hanya untuk mode serverless; layanan RAG di VPS tetap membaca `.env`-nya sendiri.
 
 **Kalau provider overload** (mis. Gemini 503 "high demand") atau model tidak ditemukan, urutannya:
 1. SDK mencoba ulang otomatis (±1 s, 2 s).

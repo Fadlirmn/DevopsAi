@@ -121,3 +121,22 @@ export function redisHost(): string | null {
 		return null;
 	}
 }
+
+/** True when Upstash is configured (settings saved from the web need it). */
+export const REDIS_CONFIGURED = DURABLE;
+
+/** Raw GET for small JSON documents. `undefined` = Redis unset or failing, `null` = no such key. */
+export async function kvGet(key: string): Promise<string | null | undefined> {
+	const r = await redis([['GET', key]]);
+	if (!r) return undefined;
+	return typeof r[0] === 'string' ? r[0] : null;
+}
+
+/** false when Redis is unset or failing. */
+export async function kvSet(key: string, value: string): Promise<boolean> {
+	return (await redis([['SET', key, value]])) !== null;
+}
+
+export async function kvDel(key: string): Promise<boolean> {
+	return (await redis([['DEL', key]])) !== null;
+}

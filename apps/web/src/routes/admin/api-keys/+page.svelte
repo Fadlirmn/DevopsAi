@@ -1,14 +1,17 @@
 <script lang="ts">
 	// Display copied from docs/mockups/admin.html "API & Kunci". Provider rows
-	// show real status. Keys, public API keys and CORS have no backend yet:
-	// the buttons say so instead of pretending to save.
+	// show real status. In serverless mode (Vercel, no VPS) "Ganti" on Model API
+	// opens LlmForm, which saves the model to Redis. Everything else (VPS keys,
+	// public API keys, CORS) has no backend yet: the buttons say so instead of
+	// pretending to save.
 	import { refreshAll } from '$app/navigation';
 	import { say } from '#lib/ui.svelte';
+	import LlmForm, { type LlmState } from './LlmForm.svelte';
 	import type { PageProps } from './$types';
 
 	type Health = { name: string; status: string };
 	type ModelCheck = { model: string; ok: boolean; reason?: string };
-	type Settings = {
+	type Settings = Partial<LlmState> & {
 		/** Set by the serverless demo (Vercel without a VPS); absent from the VPS. */
 		mode?: 'serverless';
 		modelId: string;
@@ -20,6 +23,7 @@
 		staleEmbeddingVersions: number;
 		redis?: { status: string; host: string | null };
 		modelChecks?: ModelCheck[] | null;
+		llmSource?: 'env' | 'web' | null;
 		healthChecks: Health[];
 	};
 	const health = (name: string) => settings?.healthChecks.find((h) => h.name === name)?.status;
@@ -37,9 +41,17 @@
 		const llm = health('LLM provider') ?? '';
 		if (settings?.mode === 'serverless' && llm.startsWith('error'))
 			return { small: llm.slice('error: '.length), badge: { cls: 'er', text: 'error' } };
+		if (settings?.mode === 'serverless' && !settings.llmModel)
+			return { small: 'Belum diatur — klik Ganti', badge: { cls: 'wn', text: 'belum diatur' } };
 		const row = providerRow(settings?.llmProvider, settings?.llmModel);
+		const parts = [row.small];
 		const fb = settings?.fallbackModels ?? [];
-		return fb.length ? { ...row, small: `${row.small} · cadangan: ${fb.join(', ')}` } : row;
+		if (fb.length) parts.push(`cadangan: ${fb.join(', ')}`);
+		if (settings?.apiKeyLast4) parts.push(`key ••••${settings.apiKeyLast4}`);
+		if (settings?.llmSource)
+			parts.push(settings.llmSource === 'web' ? 'diatur dari web' : 'dari env');
+		if (settings?.override?.error) parts.push(`⚠ ${settings.override.error}`);
+		return { ...row, small: parts.join(' · ') };
 	}
 
 	function redisRow() {
@@ -129,6 +141,12 @@
 		say(`${r?.label ?? n}: ${r?.badge.text ?? '?'}`);
 	}
 
+	async function llmSaved(msg: string) {
+		editing = null;
+		await refreshAll();
+		say(msg, 4500);
+	}
+
 	function toggleChange(n: string) {
 		editing = editing === n ? null : n;
 		newValue = '';
@@ -144,7 +162,7 @@
 		editing = null;
 		say(
 			serverless
-				? 'Ganti di Vercel → Settings → Environment Variables (LLM_* / KV_REST_API_*) lalu redeploy'
+				? 'Ganti di Vercel → Settings → Environment Variables lalu redeploy'
 				: 'Ganti lewat infra/.env (LLM_* / EMBEDDING_*) lalu restart — lihat README',
 			4000
 		);
@@ -168,7 +186,9 @@
 					</button><button class="b2" onclick={() => toggleChange(r.n)}>Ganti</button>
 				</div>
 			</div>
-			{#if editing === r.n}
+			{#if editing === r.n && r.n === 'Model API' && serverless && settings}
+				<LlmForm s={settings as LlmState} onsaved={llmSaved} oncancel={() => (editing = null)} />
+			{:else if editing === r.n}
 				<div class="row chg">
 					<!-- svelte-ignore a11y_autofocus -->
 					<input

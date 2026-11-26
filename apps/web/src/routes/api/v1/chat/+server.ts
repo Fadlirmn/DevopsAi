@@ -26,7 +26,7 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	if (RAG_CONFIGURED) {
-		const hasFallback = DEMO_FALLBACK || serverlessDemoEnabled();
+		const hasFallback = DEMO_FALLBACK || (await serverlessDemoEnabled());
 		// With a fallback available, probe /health first so a hanging VPS costs
 		// ~3 s instead of the full /chat timeout.
 		const up = !hasFallback || (await fetchRag(event, '/health', {}, HEALTH_PROBE_MS)) !== null;
@@ -39,7 +39,7 @@ export const POST: RequestHandler = async (event) => {
 			if (r) return toResponse(r);
 		}
 	}
-	if (serverlessDemoEnabled()) return serverlessChat(event, body);
+	if (await serverlessDemoEnabled()) return serverlessChat(event, body);
 	if (DEMO_FALLBACK) return json(demoAnswer(crypto.randomUUID()));
 	throw error(503, 'rag service unavailable');
 };

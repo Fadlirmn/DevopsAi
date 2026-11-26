@@ -41,9 +41,27 @@ const FALLBACK_MODELS = new Set([
 	'claude-sonnet-5-5'
 ]);
 
-let anthropic: Anthropic | null = null;
-let openai: OpenAI | null = null;
-let gemini: GoogleGenAI | null = null;
+// One SDK client per provider + key + base URL: the admin page can switch
+// them at runtime, so a client made with the old key must not be reused.
+const clients = new Map<string, unknown>();
+function client<T>(c: DemoConfig, make: () => T): T {
+	const id = `${c.provider}|${c.baseUrl ?? ''}|${c.apiKey ?? ''}`;
+	let hit = clients.get(id) as T | undefined;
+	if (!hit) {
+		if (clients.size >= 8) clients.clear();
+		hit = make();
+		clients.set(id, hit);
+	}
+	return hit;
+}
+const anthropicFor = (c: DemoConfig) =>
+	client(
+		c,
+		() => new Anthropic({ apiKey: c.apiKey, ...(c.baseUrl ? { baseURL: c.baseUrl } : {}) })
+	);
+// Local servers like Ollama ignore the key but the SDK requires a value.
+const openaiFor = (c: DemoConfig) =>
+	client(c, () => new OpenAI({ apiKey: c.apiKey ?? 'not-needed', baseURL: c.baseUrl }));
 
 async function viaAnthropic(
 	c: DemoConfig,
@@ -52,7 +70,7 @@ async function viaAnthropic(
 	json: boolean,
 	b: Budget
 ): Promise<Completion> {
-	anthropic ??= new Anthropic({ apiKey: c.apiKey });
+	const anthropic = anthropicFor(c);
 	try {
 		// Beta endpoint so the refusal fallback can be attached on models that take it.
 		const response = await anthropic.beta.messages.create(
@@ -103,8 +121,7 @@ async function viaOpenAI(
 	b: Budget
 ): Promise<Completion> {
 	const compatible = c.provider === 'openai-compatible';
-	// Local servers like Ollama ignore the key but the SDK requires a value.
-	openai ??= new OpenAI({ apiKey: c.apiKey ?? 'not-needed', baseURL: c.baseUrl });
+	const openai = openaiFor(c);
 	try {
 		const resp = await openai.chat.completions.create(
 			{
@@ -153,11 +170,15 @@ async function viaOpenAI(
 /** v1beta: some models (e.g. gemini-2.5-flash) reject systemInstruction on the
  * SDK's default v1 ("Developer instruction is not enabled for api version v1"). */
 function geminiClient(c: DemoConfig): GoogleGenAI {
-	return new GoogleGenAI({
-		apiKey: c.apiKey,
-		apiVersion: 'v1beta',
-		...(c.baseUrl ? { httpOptions: { baseUrl: c.baseUrl } } : {}) // optional proxy
-	});
+	return client(
+		c,
+		() =>
+			new GoogleGenAI({
+				apiKey: c.apiKey,
+				apiVersion: 'v1beta',
+				...(c.baseUrl ? { httpOptions: { baseUrl: c.baseUrl } } : {}) // optional proxy
+			})
+	);
 }
 
 /** 2.x takes a thinkingBudget; 3.x and aliases like gemini-flash-latest take
@@ -175,7 +196,7 @@ async function viaGemini(
 	b: Budget,
 	thinking = true
 ): Promise<Completion> {
-	gemini ??= geminiClient(c);
+	const gemini = geminiClient(c);
 	const thinkingConfig = thinking ? geminiThinking(c.model) : undefined;
 	try {
 		const resp = await gemini.models.generateContent({
@@ -304,7 +325,11 @@ export async function complete(
 	};
 
 	const configured = [c.model, ...c.fallbackModels];
-	const order = lastGood && lastGood !== c.model ? [lastGood, ...configured] : configured;
+	// lastGood may belong to a provider/model list the admin page just replaced.
+	const order =
+		lastGood && lastGood !== c.model && configured.includes(lastGood)
+			? [lastGood, ...configured]
+			: configured;
 	for (const model of order) {
 		const r = await attempt(model);
 		if (r) return r;
@@ -336,13 +361,11 @@ const CHECK_MS = 5_000;
 async function checkOne(c: DemoConfig, model: string): Promise<ModelCheck> {
 	try {
 		if (c.provider === 'anthropic') {
-			anthropic ??= new Anthropic({ apiKey: c.apiKey });
-			await anthropic.models.retrieve(model, {}, { timeout: CHECK_MS, maxRetries: 0 });
+			await anthropicFor(c).models.retrieve(model, {}, { timeout: CHECK_MS, maxRetries: 0 });
 		} else if (c.provider === 'gemini') {
-			gemini ??= geminiClient(c);
-			await gemini.models.get({ model, config: { httpOptions: { timeout: CHECK_MS } } });
+			await geminiClient(c).models.get({ model, config: { httpOptions: { timeout: CHECK_MS } } });
 		} else {
-			openai ??= new OpenAI({ apiKey: c.apiKey ?? 'not-needed', baseURL: c.baseUrl });
+			const openai = openaiFor(c);
 			try {
 				await openai.models.retrieve(model, { timeout: CHECK_MS, maxRetries: 0 });
 			} catch (e) {

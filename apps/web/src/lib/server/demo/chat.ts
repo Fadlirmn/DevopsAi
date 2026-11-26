@@ -46,7 +46,8 @@ export const DEMO_SLUG = 'it-ops';
 export const TOP_K = 6;
 const search = new Bm25(DEMO_DOC.chunks.map((c) => `${c.heading ?? ''} ${c.content}`));
 
-export const serverlessDemoEnabled = (): boolean => demoConfig() !== null;
+/** Env or admin-page settings name a real provider. */
+export const serverlessDemoEnabled = async (): Promise<boolean> => (await demoConfig()) !== null;
 
 function humanWait(s: number): string {
 	if (s < 90) return `${s} detik`;
@@ -96,7 +97,7 @@ const BUDGET_MS = 50_000;
 
 export async function serverlessChat(event: RequestEvent, body: unknown): Promise<Response> {
 	const deadline = Date.now() + BUDGET_MS;
-	const c = demoConfig();
+	const c = await demoConfig();
 	if (!c) throw error(503, 'demo AI not configured');
 
 	const b = (body ?? {}) as {
