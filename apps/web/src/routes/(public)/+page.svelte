@@ -60,6 +60,18 @@
 	// Signed-out empty state: centered greeting + composer (component/image copy 2.png).
 	let hero = $derived(!isAdmin && !current && !cleared && collections.length > 0);
 
+	// Starter prompts above the composer, only before the first message.
+	// Out-of-context ones follow REWRITE_PROMPT (#lib/server/demo/grounding.ts):
+	// non-IT → refusal; IT but not in the document → abstain.
+	const DOC_LABEL = 'NIST SP 800-61 Rev. 2 — Computer Security Incident Handling Guide';
+	const SUGGEST_RAG = [
+		'Apa saja fase penanganan insiden menurut NIST?',
+		'Apa yang perlu disiapkan pada tahap preparation?',
+		'Bagaimana strategi containment yang disarankan?'
+	];
+	const SUGGEST_OOC = ['Resep rendang yang enak gimana?', 'Bagaimana cara install Kubernetes?'];
+	let showSuggest = $derived(!current && collections.length > 0);
+
 	function persist() {
 		try {
 			// never persist an in-flight turn as loading
@@ -248,6 +260,23 @@
 
 {#snippet composer()}
 	<div class="compwrap">
+		{#if showSuggest}
+			<div class="suggest">
+				<p class="sg-doc">Dokumen: <b>{DOC_LABEL}</b></p>
+				<span class="sg-lbl">Uji RAG (ada di dokumen)</span>
+				<div class="sg-row">
+					{#each SUGGEST_RAG as s (s)}
+						<button class="sg-chip" onclick={() => ask(s)}>{s}</button>
+					{/each}
+				</div>
+				<span class="sg-lbl">Uji di luar konteks (harus ditolak)</span>
+				<div class="sg-row">
+					{#each SUGGEST_OOC as s (s)}
+						<button class="sg-chip ooc" onclick={() => ask(s)}>{s}</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
 		<div class="comp">
 			<button class="ic" aria-label="Lampirkan" onclick={() => notYet('Lampiran')}>
 				<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
