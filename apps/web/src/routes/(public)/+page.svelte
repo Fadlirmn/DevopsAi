@@ -62,14 +62,10 @@
 
 	// Starter prompts above the composer, only before the first message.
 	// Out-of-context ones follow REWRITE_PROMPT (#lib/server/demo/grounding.ts):
-	// non-IT → refusal; IT but not in the document → abstain.
+	// non-IT → refusal.
 	const DOC_LABEL = 'NIST SP 800-61 Rev. 2 — Computer Security Incident Handling Guide';
-	const SUGGEST_RAG = [
-		'Apa saja fase penanganan insiden menurut NIST?',
-		'Apa yang perlu disiapkan pada tahap preparation?',
-		'Bagaimana strategi containment yang disarankan?'
-	];
-	const SUGGEST_OOC = ['Resep rendang yang enak gimana?', 'Bagaimana cara install Kubernetes?'];
+	const SUGGEST_RAG = ['Apa saja fase penanganan insiden menurut NIST?'];
+	const SUGGEST_OOC = ['Resep rendang yang enak gimana?'];
 	let showSuggest = $derived(!current && collections.length > 0);
 
 	function persist() {
